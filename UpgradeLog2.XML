@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="fx">
+</Property><Property Name="Projektmappendatei" Value="E:\Entwicklung\Projekte\Fx\Fx.App\fx.sln">
+</Property><Property Name="Date" Value="Montag, 11. Jänner 2010">
+</Property><Property Name="Time" Value="00:20">
+</Property><Property Name="Protokollnummer" Value="2">
+</Property></Properties><Event ErrorLevel="0" Project="fx" Source="fx.csproj" Description="Projekt erfolgreich konvertiert">
+</Event><Event ErrorLevel="3" Project="fx" Source="fx.csproj" Description="Converted">
+</Event><Event ErrorLevel="0" Project="" Source="fx.sln" Description="Die Projektmappe wurde erfolgreich konvertiert.">
+</Event><Event ErrorLevel="3" Project="" Source="fx.sln" Description="Converted">
+</Event><Event ErrorLevel="0" Project="fx" Source="fx.csproj" Description="Überprüfung abgeschlossen: Aktualisierung von Projektdateien nicht erforderlich.">
+</Event></UpgradeLog>

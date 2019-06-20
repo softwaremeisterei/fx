@@ -1,0 +1,52 @@
+8
+
+dir
+23
+https://fortissima:8443/svn/Projekte/trunk/Fx/Fx.App/Shapes
+https://fortissima:8443/svn/Projekte
+
+
+
+2008-10-22T18:49:15.906000Z
+2
+admin
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+1f6563aa-90a4-9d40-9197-0769022004d0
+
+StarshipShape.cs
+file
+
+
+
+
+2008-12-23T20:31:28.210429Z
+dfd7b040323e000b5a6d76091cb91b2a
+2008-10-22T18:49:15.906000Z
+2
+admin
+
+CircleShape.cs
+file
+
+
+
+
+2008-12-23T20:31:28.226029Z
+ca3f2f3d34be903affbc3e74fb5b1574
+2008-10-22T18:49:15.906000Z
+2
+admin
+
