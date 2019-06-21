@@ -1,554 +1,501 @@
-
 using System;
-using System.Collections;
-using System.ComponentModel;
 using System.Drawing;
-using System.Data;
-using System.Windows.Forms;
 using System.Threading;
-using System.Collections.Generic;
+using System.Windows.Forms;
+using System.Windows.Input;
 
-namespace fx
+/// <summary>
+/// Summary description for PhysicsView.
+/// </summary>
+public class PhysicsView : UserControl
 {
-    /// <summary>
-    /// Summary description for PhysicsView.
-    /// </summary>
-    public class PhysicsView : System.Windows.Forms.UserControl
+    World _world = new World();
+    MassObject _focusedObject = null;
+    EngineThread _engineThread = new EngineThread();
+    double _spatialScale = 1;
+    double _timeScale = 1;
+    Vector _viewPoint = new Vector(0, 0);
+    double _framesPerSec = 0;
+    int _osdLevel = 0;
+    bool _isFrozen = false;
+
+    readonly Random _randomizer = new Random();
+    readonly Font _font = new Font("Arial", 10, GraphicsUnit.Pixel);
+
+    private System.Timers.Timer timer1;
+
+    const double _timerInterval = 40;
+    const int maxSecondsEngineFireParticlesLivetime = 10;
+    const int CountObjectsCalcTreshold = 200;
+
+    private System.ComponentModel.Container components = null;
+
+    public PhysicsView()
     {
-        Int32 CountObjectsCalculationTreshold = 200;
+        InitializeComponent();
+    }
 
-        Random p_Randomizer = new Random();
-        bool p_EngineThrustOn = false;
-        EngineThread EngineThread = new EngineThread();
-        double p_SpatialScale = 1;
-        double p_TimeScale = 1;
-        double p_FramesPerSec = 0;
-        Int32 p_OsdLevel = 0;
-        Boolean p_Frozen = false;
-        Vector p_ViewPoint = new Vector(0, 0);
-        PhysicObject p_FocusedPhysicObject = null;
-        double p_TimerInterval = 40;
-        World p_World = new World();
-        Font p_Font = new Font("Arial", 10, GraphicsUnit.Pixel);
-
-        private System.Timers.Timer timer1;
-        DateTime p_LastGCDate = DateTime.MinValue;
-
-        Int32 maxSecondsEngineFireParticlesLivetime = 10;
-
-        /// <summary> 
-        /// Required designer variable.
-        /// </summary>
-        private System.ComponentModel.Container components = null;
-
-        public PhysicsView()
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
         {
-            // This call is required by the Windows.Forms Form Designer.
-            InitializeComponent();
-
-            // TODO: Add any initialization after the InitForm call
-
-        }
-
-        /// <summary> 
-        /// Clean up any resources being used.
-        /// </summary>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
+            if (components != null)
             {
-                if (components != null)
-                {
-                    components.Dispose();
-                }
-            }
-            base.Dispose(disposing);
-        }
-
-        #region Component Designer generated code
-        /// <summary> 
-        /// Required method for Designer support - do not modify 
-        /// the contents of this method with the code editor.
-        /// </summary>
-        private void InitializeComponent()
-        {
-            this.timer1 = new System.Timers.Timer();
-            ((System.ComponentModel.ISupportInitialize)(this.timer1)).BeginInit();
-            // 
-            // timer1
-            // 
-            this.timer1.Enabled = true;
-            this.timer1.SynchronizingObject = this;
-            // 
-            // PhysicsView
-            // 
-            this.Name = "PhysicsView";
-            this.Size = new System.Drawing.Size(120, 112);
-            this.Resize += new System.EventHandler(this.PhysicsView_Resize);
-            this.Load += new System.EventHandler(this.PhysicsView_Load);
-            this.Paint += new System.Windows.Forms.PaintEventHandler(this.PhysicsView_Paint);
-            this.KeyUp += new System.Windows.Forms.KeyEventHandler(this.PhysicsView_KeyUp);
-            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.PhysicsView_KeyDown);
-            this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PhysicsView_MouseDown);
-            ((System.ComponentModel.ISupportInitialize)(this.timer1)).EndInit();
-
-        }
-        #endregion
-
-        private void PaintScala(Graphics g)
-        {
-            int x0 = this.Size.Width / 12;
-            int y0 = this.Size.Height * 10 / 12;
-            int x1 = this.Size.Width * 11 / 12;
-            g.DrawLine(Pens.Gray, x0, y0, x1, y0);
-            for (int i = 0; i < 11; i++)
-            {
-                int x = (int)(x0 + i * this.Size.Width / 12);
-                g.DrawLine(Pens.Gray, x, y0 - 5, x, y0);
-                g.DrawString((i * this.Size.Width / 12 / this.p_SpatialScale).ToString("F"), this.p_Font, Brushes.Gray, x, y0 + 5);
+                components.Dispose();
             }
         }
+        base.Dispose(disposing);
+    }
 
-        private void PaintOnscreenText(Graphics g)
+    #region Component Designer generated code
+    /// <summary> 
+    /// Required method for Designer support - do not modify 
+    /// the contents of this method with the code editor.
+    /// </summary>
+    private void InitializeComponent()
+    {
+        this.timer1 = new System.Timers.Timer();
+        ((System.ComponentModel.ISupportInitialize)(this.timer1)).BeginInit();
+        this.SuspendLayout();
+        // 
+        // timer1
+        // 
+        this.timer1.Enabled = true;
+        this.timer1.SynchronizingObject = this;
+        // 
+        // PhysicsView
+        // 
+        this.Name = "PhysicsView";
+        this.Size = new System.Drawing.Size(120, 112);
+        this.Load += new System.EventHandler(this.PhysicsView_Load);
+        this.Paint += new System.Windows.Forms.PaintEventHandler(this.PhysicsView_Paint);
+        this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PhysicsView_MouseDown);
+        ((System.ComponentModel.ISupportInitialize)(this.timer1)).EndInit();
+        this.ResumeLayout(false);
+
+    }
+    #endregion
+
+    private void PaintScala(Graphics g)
+    {
+        int x0 = Size.Width / 12;
+        int y0 = Size.Height * 10 / 12;
+        int x1 = Size.Width * 11 / 12;
+        g.DrawLine(Pens.Gray, x0, y0, x1, y0);
+
+        for (int i = 0; i < 11; i++)
         {
-            g.DrawString(this.GetOsdText(), this.p_Font, System.Drawing.Brushes.Black, 10, 10);
-            g.DrawString(this.GetCommandHelText(), this.p_Font, System.Drawing.Brushes.Black, this.Size.Width - 150, 10);
-            this.PaintScala(g);
+            int x = (int)(x0 + i * Size.Width / 12);
+            g.DrawLine(Pens.Gray, x, y0 - 5, x, y0);
+            g.DrawString((i * Size.Width / 12 / _spatialScale).ToString("F"), _font, Brushes.Gray, x, y0 + 5);
         }
+    }
 
-        private void PaintWorld(Graphics g)
+    private void PaintOnscreenText(Graphics g)
+    {
+        g.DrawString(GetOsdText(), _font, System.Drawing.Brushes.Black, 10, 10);
+        g.DrawString(GetCommandHelpText(), _font, System.Drawing.Brushes.Black, Size.Width - 150, 10);
+        PaintScala(g);
+    }
+
+    private void PaintWorld(Graphics g)
+    {
+        lock (_world.Objects)
         {
-            lock (this.p_World.PhysicObjects)
+            foreach (var obj in _world.Objects)
             {
-                foreach (PhysicObject physicObject in this.p_World.PhysicObjects)
+                var viewPosition = obj.Position - _viewPoint;
+                viewPosition *= _spatialScale;
+
+                obj.Shape.Paint(g, viewPosition.X, viewPosition.Y, _spatialScale);
+
+                if (_osdLevel == 1)
                 {
-                    Vector viewPosition = physicObject.Position - this.p_ViewPoint;
-
-                    viewPosition *= this.p_SpatialScale;
-
-                    physicObject.Shape.Paint(g, viewPosition.X, viewPosition.Y, this.p_SpatialScale);
-
-                    if (this.p_OsdLevel == 1)
+                    if (obj.Name != String.Empty)
                     {
-                        if (physicObject.Name != String.Empty)
-                        {
-                            g.DrawString(this.PhysicObjectDescription(physicObject), this.p_Font, System.Drawing.Brushes.Black, (float)viewPosition.X - 10, (float)viewPosition.Y + 10);
-                        }
+                        g.DrawString(Describe(obj), _font, System.Drawing.Brushes.Black, (float)viewPosition.X - 10, (float)viewPosition.Y + 10);
                     }
                 }
             }
         }
+    }
 
-        private void PaintBackground(Graphics g)
+    private void PaintBackground(Graphics g)
+    {
+        g.FillRectangle(System.Drawing.Brushes.LightBlue, g.ClipBounds);
+    }
+
+    private void PhysicsView_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
+    {
+        if (DesignMode)
         {
-            g.FillRectangle(System.Drawing.Brushes.LightBlue, g.ClipBounds);
+            e.Graphics.FillRectangle(Brushes.Gray, 0, 0, Size.Width, Size.Height);
+            return;
         }
 
-        private void PhysicsView_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
+        var begin = DateTime.Now;
+
+        if (e.ClipRectangle.Width == 0 || e.ClipRectangle.Height == 0) return;
+
+        Bitmap bufl = new Bitmap(e.ClipRectangle.Width, e.ClipRectangle.Height);
+        using (Graphics g = Graphics.FromImage(bufl))
         {
-            if (this.DesignMode)
+            if (_focusedObject != null)
             {
-                e.Graphics.FillRectangle(Brushes.Gray, 0, 0, this.Size.Width, this.Size.Height);
-                return;
+                _viewPoint = _focusedObject.Position
+                    - new Vector(Size.Width / 2, Size.Height / 2) / _spatialScale;
             }
 
-            DateTime begin = DateTime.Now;
+            PaintBackground(g);
+            PaintOnscreenText(g);
+            PaintWorld(g);
 
-            if (e.ClipRectangle.Width == 0 || e.ClipRectangle.Height == 0) return;
+            e.Graphics.DrawImageUnscaled(bufl, 0, 0);
+            g.Dispose();
+        }
 
-            Bitmap bufl = new Bitmap(e.ClipRectangle.Width, e.ClipRectangle.Height);
-            using (Graphics g = Graphics.FromImage(bufl))
+        var end = DateTime.Now;
+        _framesPerSec = 1000 / (end - begin).TotalMilliseconds;
+    }
+
+    private string FocusedDescription()
+    {
+        var focused = _focusedObject;
+        if (focused == null) return String.Empty;
+        return String.Format("{0} X: {1:F}, Y: {2:F}, {3:F} m/s, {4:F} kg", focused.Name, focused.Position.X, focused.Position.Y, focused.Speed, focused.Mass);
+    }
+
+    private string GetCommandHelpText()
+    {
+        return "B Brake\r\nK Fire Engine\r\nJ Turn Left\r\nLTurn Right\r\nSpace Fire Wapon\r\n"
+            + "O Toggle OSD\r\nN Focus Next\r\nR Reset\r\nF Freeze\r\n"
+            + "1 Realtime\r\nH 1h/s\r\nD 1d/s\r\nM 1Mth/s\r\nY 1a/s\r\n"
+            + "W Increase Time Scale\r\nQ Decrease Time Scale\r\n"
+            + "S Increase Spatial Scale\r\nA Decrease Spatial Scale";
+    }
+
+    private string GetOsdText()
+    {
+        var timeScale
+            = (_timeScale >= NaturalConstants.Year) ? string.Format("{0:F} years", _timeScale / NaturalConstants.Year)
+            : (_timeScale >= NaturalConstants.Month) ? string.Format("{0:F} months", _timeScale / NaturalConstants.Month)
+            : (_timeScale >= NaturalConstants.Day) ? string.Format("{0:F} days", _timeScale / NaturalConstants.Day)
+            : (_timeScale >= NaturalConstants.Hour) ? string.Format("{0:F} hours", _timeScale / NaturalConstants.Hour) : (_timeScale >= NaturalConstants.Minute)
+                ? string.Format("{0:F} minutes", _timeScale / NaturalConstants.Minute) : string.Format("{0:F} seconds", _timeScale);
+        var focusedOsd = string.Empty;
+        var focused = _focusedObject;
+
+        if (focused != null)
+        {
+            var force = Vector.NullVector;
+
+            foreach (Engine e in focused.Engines)
             {
-                if (this.p_FocusedPhysicObject != null)
-                {
-                    this.p_ViewPoint = this.p_FocusedPhysicObject.Position
-                        - new Vector(this.Size.Width / 2, this.Size.Height / 2) / this.p_SpatialScale;
-                }
-
-                this.PaintBackground(g);
-                this.PaintOnscreenText(g);
-                this.PaintWorld(g);
-
-                e.Graphics.DrawImageUnscaled(bufl, 0, 0);
-                g.Dispose();
+                force += e.Force;
             }
 
-            DateTime end = DateTime.Now;
-            TimeSpan execSpan = (end - begin);
-            this.p_FramesPerSec = 1000 / execSpan.TotalMilliseconds;
+            focusedOsd = string.Format("Focused: {0}\r\nEngines Sum: {1:F} dx, {2:F} dy, {3:F} Nm\r\nGravitational force: {4:F} dx, {5:F} dy, {6:F} Nm", FocusedDescription(), force.X, force.Y, force.Magnitude, focused.GravForce.X, focused.GravForce.Y, focused.GravForce.Magnitude);
+
         }
 
-        private String FocusedDescription()
-        {
-            PhysicObject focused = this.p_FocusedPhysicObject;
-            if (focused == null) return String.Empty;
-            return String.Format("{0} X: {1:F}, Y: {2:F}, {3:F} m/s, {4:F} kg", focused.Name, focused.Position.X, focused.Position.Y, focused.Speed, focused.Mass);
-        }
+        return string.Format("Spatial Scale {0:F} meter per pixel\r\nTime Scale {1} per second\r\nFrames/second {2:F}\r\n{3}", 1 / _spatialScale, timeScale, _framesPerSec, focusedOsd);
+    }
 
-        private String GetCommandHelText()
-        {
-            return "B Brake\r\nK Fire Engine\r\nJ Turn Left\r\nLTurn Right\r\nSpace Fire Wapon\r\n"
-                + "O Toggle OSD\r\nN Focus Next\r\nR Reset\r\nF Freeze\r\n"
-                + "1 Realtime\r\nH 1h/s\r\nD 1d/s\r\nM 1Mth/s\r\nY 1a/s\r\n"
-                + "W Increase Time Scale\r\nQ Decrease Time Scale\r\n"
-                + "S Increase Spatial Scale\r\nA Decrease Spatial Scale";
-        }
+    private string Describe(MassObject m)
+    {
+        return string.Format("{0}\r\n{1:F} kg\r\n{2:F} m/s\r\nX: {3:F}\r\nY: {4:F}", m.Name, m.Mass, m.Speed, m.Position.X, m.Position.Y);
+    }
 
-        private String GetOsdText()
-        {
-            String timeScale
-                = (this.p_TimeScale >= CosmicConstants.Year)
-                ? String.Format("{0:F} years", this.p_TimeScale / CosmicConstants.Year)
-                : (this.p_TimeScale >= CosmicConstants.Month)
-                ? String.Format("{0:F} months", this.p_TimeScale / CosmicConstants.Month)
-                : (this.p_TimeScale >= CosmicConstants.Day)
-                ? String.Format("{0:F} days", this.p_TimeScale / CosmicConstants.Day)
-                : (this.p_TimeScale >= CosmicConstants.Hour)
-                ? String.Format("{0:F} hours", this.p_TimeScale / CosmicConstants.Hour)
-                : (this.p_TimeScale >= CosmicConstants.Minute)
-                ? String.Format("{0:F} minutes", this.p_TimeScale / CosmicConstants.Minute)
-                : String.Format("{0:F} seconds", this.p_TimeScale)
-                ;
-            String focusedOsd = String.Empty;
-            PhysicObject focused = this.p_FocusedPhysicObject;
-            if (focused != null)
-            {
-                Vector forceSum = Vector.NullVector;
-                foreach (Engine e in focused.Engines)
-                {
-                    forceSum += e.Force;
-                }
-                focusedOsd = String.Format("Focused: {0}\r\nEngines Sum: {1:F} dx, {2:F} dy, {3:F} Nm\r\nGravitational force: {4:F} dx, {5:F} dy, {6:F} Nm", this.FocusedDescription(), forceSum.X, forceSum.Y, forceSum.Magnitude, focused.GravForce.X, focused.GravForce.Y, focused.GravForce.Magnitude);
-
-            }
-            return String.Format("Spatial Scale {0:F} meter per pixel\r\nTime Scale {1} per second\r\nFrames/second {2:F}\r\n{3}", 1 / this.p_SpatialScale, timeScale, this.p_FramesPerSec, focusedOsd);
-        }
-
-        private String PhysicObjectDescription(PhysicObject m)
-        {
-            return String.Format("{0}\r\n{1:F} kg\r\n{2:F} m/s\r\nX: {3:F}\r\nY: {4:F}", m.Name, m.Mass, m.Speed, m.Position.X, m.Position.Y);
-        }
-
-        private void PhysicsView_Load(object sender, System.EventArgs e)
-        {
-            this.EngineThread.Run();
+    private void PhysicsView_Load(object sender, System.EventArgs e)
+    {
+        _engineThread.Run();
 #if false
-			this.p_World.InsertSolarSystem();
-			this.p_FocusedPhysicObject = this.p_World.FindPhysicObject("Sun");
-			this.p_SpatialScale = this.Size.Width / (CosmicConstants.AU * 2) * 2/3;
+			_world.InsertSolarSystem();
+			_focusedObject = _world.FindPhysicObject("Sun");
+			_spatialScale = Size.Width / (CosmicConstants.AU * 2) * 2/3;
 #else
-            PhysicObject nina = new PhysicObject("Nina", Vector.NullVector, 0, new Vector(1, 0), 1E+13);
-            nina.Shape = new CircleShape(2);
-            this.p_World.PhysicObjects.Add(nina);
+        var nina = new MassObject("Nina", Vector.NullVector, 0, new Vector(1, 0), 1E+13);
+        nina.Shape = new CircleShape(2);
+        _world.Objects.Add(nina);
 
-            PhysicObject ninasMoon = new PhysicObject("Ninas Moon", new Vector(-10, 0), 6, new Vector(0, -1), 1E+10);
-            ninasMoon.Shape = new CircleShape(1);
-            this.p_World.PhysicObjects.Add(ninasMoon);
+        var ninasMoon = new MassObject("Ninas Moon", new Vector(-10, 0), 6, new Vector(0, -1), 1E+10);
+        ninasMoon.Shape = new CircleShape(1);
+        _world.Objects.Add(ninasMoon);
 
-            PhysicObject starship = new PhysicObject("Starship Ed", Vector.NullVector + Vector.UnitVectorX * -40, 0, new Vector(1, 0), 1E+4);
-            this.p_World.PhysicObjects.Add(starship);
-            starship.Shape = new StarshipShape();
-            starship.Shape.Orientation = new Vector(1, -0.618);
+        var starship = new MassObject("Starship Ed", Vector.NullVector + Vector.UnitVectorX * -40, 0, new Vector(1, 0), 1E+4);
+        _world.Objects.Add(starship);
+        starship.Shape = new StarshipShape();
+        starship.Shape.Orientation = new Vector(1, -0.618);
 
-            Engine engine = new Engine(Vector.NullVector, 0/*-0.9*/);
-            engine.MaxStrength = 10E+4;
-            this.EngineThread.Add(engine);
-            starship.Engines.Add(engine);
+        var engine = new Engine(Vector.NullVector, 0/*-0.9*/);
+        engine.MaxStrength = 10E+4;
+        _engineThread.Add(engine);
+        starship.Engines.Add(engine);
 
-            this.p_SpatialScale = 6;
-            this.p_FocusedPhysicObject = starship;
+        _spatialScale = 6;
+        _focusedObject = starship;
 
 #endif
 
-            this.timer1.Interval = (int)this.p_TimerInterval;
-            this.timer1.Enabled = true;
-            this.timer1.Elapsed += new System.Timers.ElapsedEventHandler(TimerTick);
-            this.timer1.Start();
-            this.SetStyle(ControlStyles.ResizeRedraw | ControlStyles.Opaque, true);
-        }
+        timer1.Interval = (int)_timerInterval;
+        timer1.Enabled = true;
+        timer1.Elapsed += new System.Timers.ElapsedEventHandler(TimerTick);
+        timer1.Start();
 
-        private static Object timerLock = new Object();
+        SetStyle(ControlStyles.ResizeRedraw | ControlStyles.Opaque, true);
+    }
 
-        private void TimerTick(object sender, System.Timers.ElapsedEventArgs e)
+    private static Object Mux = new Object();
+
+    private void TimerTick(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (!Monitor.TryEnter(Mux)) return;
+
+        lock (Mux)
         {
-            if (!System.Threading.Monitor.TryEnter(timerLock))
+            if (_isFrozen)
             {
+                Invalidate(false);
                 return;
             }
 
-            lock (timerLock)
+            HandleKeyboard();
+
+            var physics = new Physics();
+
+            lock (_world.Objects)
             {
-                if (this.p_Frozen)
-                {
-                    this.Invalidate(false);
-                    return;
-                }
-                Physics physics = new Physics();
+                MassObject[] physObjs = null;
 
-                lock (this.p_World.PhysicObjects)
+                if (_world.Objects.Count > CountObjectsCalcTreshold)
                 {
-                    PhysicObject[] physObjs = null;
-                    if (this.p_World.PhysicObjects.Count > this.CountObjectsCalculationTreshold)
+                    // Take only the biggest objects into the calculation
+                    // 1. Sort the objects descending by mass
+                    _world.Objects.Sort(new Comparison<MassObject>((a, b) => -a.Mass.CompareTo(b.Mass)));
+
+                    physObjs = new MassObject[CountObjectsCalcTreshold];
+
+                    var count = 0;
+                    foreach (MassObject o in _world.Objects)
                     {
-                        // Take only the biggest objects into the calculation
-                        // 1. Sort the objects descending by mass
-                        this.p_World.PhysicObjects.Sort(new Comparison<PhysicObject>(
-                            delegate(PhysicObject a, PhysicObject b) { return -a.Mass.CompareTo(b.Mass); }));
-
-                        physObjs = new PhysicObject[this.CountObjectsCalculationTreshold];
-
-                        Int32 count = 0;
-                        foreach (PhysicObject o in this.p_World.PhysicObjects)
-                        {
-                            physObjs[count++] = o;
-                            if (count == this.CountObjectsCalculationTreshold) break;
-                        }
+                        physObjs[count++] = o;
+                        if (count == CountObjectsCalcTreshold) break;
                     }
-                    else
-                    {
-                        physObjs = (PhysicObject[])this.p_World.PhysicObjects.ToArray();
-                    }
-                    physics.Calculate(physObjs, this.p_TimerInterval * this.p_TimeScale);
                 }
-
-                if (DateTime.Now >= this.p_LastGCDate + TimeSpan.FromMilliseconds(125))
+                else
                 {
-                    this.p_World.GC();
-                    this.p_LastGCDate = DateTime.Now;
+                    physObjs = _world.Objects.ToArray();
                 }
 
-                if (this.p_EngineThrustOn)
-                {
-                    this.FireEngine();
-                }
-
-                this.Invalidate(false);
+                physics.Calculate(physObjs, _timerInterval * _timeScale);
             }
+
+            _world.CollectGarbage();
+
+            Invalidate(false);
+        }
+    }
+
+    private void HandleKeyboard()
+    {
+        if (Control.ModifierKeys == Keys.Shift)
+        {
+            if (Keyboard.IsKeyDown(Key.J)) { _viewPoint -= new Vector(10, 0) / _spatialScale; }
+            if (Keyboard.IsKeyDown(Key.L)) { _viewPoint += new Vector(10, 0) / _spatialScale; }
+            if (Keyboard.IsKeyDown(Key.I)) { _viewPoint -= new Vector(0, 10) / _spatialScale; }
+            if (Keyboard.IsKeyDown(Key.K)) { _viewPoint += new Vector(0, 10) / _spatialScale; }
+
+            return;
         }
 
-        private void PhysicsView_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
+        if (Keyboard.IsKeyDown(Key.S)) { _spatialScale *= 2; }
+        if (Keyboard.IsKeyDown(Key.A)) { _spatialScale /= 2; }
+
+        if (Keyboard.IsKeyDown(Key.W)) { _timeScale *= 2; }
+        if (Keyboard.IsKeyDown(Key.Q)) { _timeScale /= 2; }
+
+        if (Keyboard.IsKeyDown(Key.H)) { _timeScale = NaturalConstants.Hour; }
+        if (Keyboard.IsKeyDown(Key.D)) { _timeScale = NaturalConstants.Day; }
+        if (Keyboard.IsKeyDown(Key.M)) { _timeScale = NaturalConstants.Month; }
+        if (Keyboard.IsKeyDown(Key.Y)) { _timeScale = NaturalConstants.Year; }
+
+        if (Keyboard.IsKeyDown(Key.D1)) { _spatialScale = 1; _timeScale = 1; }
+
+
+        if (Keyboard.IsKeyDown(Key.F)) { _isFrozen = !_isFrozen; }
+        if (Keyboard.IsKeyDown(Key.R)) { lock (_world.Objects) { _world.Objects.Clear(); } }
+
+        if (Keyboard.IsKeyDown(Key.N))
         {
-            if (e.Button == MouseButtons.Left)
+            if (Control.ModifierKeys == Keys.Shift)
             {
-                this.p_Frozen = true;
-                try
-                {
-                    PhysicObjectForm form = new PhysicObjectForm();
-                    form.PhysicObject = new PhysicObject();
-                    form.PhysicObject.Position.X = this.p_ViewPoint.X + e.X / this.p_SpatialScale;
-                    form.PhysicObject.Position.Y = this.p_ViewPoint.Y + e.Y / this.p_SpatialScale;
-
-                    //form.PhysicObject.Position /= this.p_SpatialScale;
-
-                    if (form.ShowDialog() == DialogResult.OK)
-                    {
-                        lock (this.p_World.PhysicObjects)
-                        {
-                            this.p_World.PhysicObjects.Add(form.PhysicObject);
-                        }
-                    }
-                }
-                finally
-                {
-                    this.p_Frozen = false;
-                }
+                _focusedObject = null;
             }
             else
             {
-                this.p_FocusedPhysicObject = null;
-
-                this.p_ViewPoint =
-                    this.p_ViewPoint
-                    + new Vector(e.X, e.Y) / this.p_SpatialScale
-                    - new Vector(this.Size.Width / 2, this.Size.Height / 2) / this.p_SpatialScale;
-            }
-        }
-
-        private void PhysicsView_KeyDown(object sender, System.Windows.Forms.KeyEventArgs e)
-        {
-            if (e.Shift)
-            {
-                switch (e.KeyCode)
+                if (_world.Objects.Count > 0)
                 {
-                    case Keys.J: this.p_ViewPoint -= new Vector(10, 0) / this.p_SpatialScale; return;
-                    case Keys.L: this.p_ViewPoint += new Vector(10, 0) / this.p_SpatialScale; return;
-                    case Keys.I: this.p_ViewPoint -= new Vector(0, 10) / this.p_SpatialScale; return;
-                    case Keys.K: this.p_ViewPoint += new Vector(0, 10) / this.p_SpatialScale; return;
-                }
-            }
-
-            switch (e.KeyCode)
-            {
-                case Keys.S: this.p_SpatialScale *= 2; return;
-                case Keys.A: this.p_SpatialScale /= 2; return;
-
-                case Keys.W: this.p_TimeScale *= 2; return;
-                case Keys.Q: this.p_TimeScale /= 2; return;
-
-                case Keys.H: this.p_TimeScale = CosmicConstants.Hour; return;
-                case Keys.D: this.p_TimeScale = CosmicConstants.Day; return;
-                case Keys.M: this.p_TimeScale = CosmicConstants.Month; return;
-                case Keys.Y: this.p_TimeScale = CosmicConstants.Year; return;
-
-                case Keys.D1:
-                    this.p_SpatialScale = 1;
-                    this.p_TimeScale = 1;
-                    return;
-
-
-                case Keys.F: this.p_Frozen = !this.p_Frozen; return;
-                case Keys.R:
-                    lock (this.p_World.PhysicObjects)
+                    if (_focusedObject == null)
                     {
-                        this.p_World.PhysicObjects.Clear();
+                        _focusedObject = (MassObject)_world.Objects[0];
                     }
-                    return;
-                case Keys.N:
-                    if ((e.Modifiers & Keys.Shift) == Keys.Shift)
-                    {
-                        this.p_FocusedPhysicObject = null;
-                        return;
-                    }
-                    if (this.p_World.PhysicObjects.Count == 0) return;
-                    if (this.p_FocusedPhysicObject == null)
-                        this.p_FocusedPhysicObject = (PhysicObject)this.p_World.PhysicObjects[0];
                     else
                     {
-                        lock (this.p_World.PhysicObjects)
+                        lock (_world.Objects)
                         {
-                            Int32 i = this.p_World.PhysicObjects.IndexOf(this.p_FocusedPhysicObject) + 1;
-                            i = i % this.p_World.PhysicObjects.Count;
-                            this.p_FocusedPhysicObject = (PhysicObject)this.p_World.PhysicObjects[i];
-                        }
-                    }
-                    return;
-                case Keys.L:
-                    if (this.p_FocusedPhysicObject != null)
-                    {
-                        lock (this.p_World.PhysicObjects)
-                        {
-                            this.p_FocusedPhysicObject.Shape.Orientation = this.p_FocusedPhysicObject.Shape.Orientation.Rotate(CosmicConstants.PI / 30);
-                        }
-                    }
-                    return;
-                case Keys.J:
-                    if (this.p_FocusedPhysicObject != null)
-                    {
-                        lock (this.p_World.PhysicObjects)
-                        {
-                            this.p_FocusedPhysicObject.Shape.Orientation = this.p_FocusedPhysicObject.Shape.Orientation.Rotate(-CosmicConstants.PI / 30);
-                        }
-                    }
-                    return;
-                case Keys.B:
-                    if (this.p_FocusedPhysicObject != null)
-                    {
-                        lock (this.p_World.PhysicObjects)
-                        {
-                            this.p_FocusedPhysicObject.Speed /= 2;
-                        }
-                    }
-                    return;
-
-                case Keys.K:
-                    this.FireEngine();
-                    return;
-
-                case Keys.Space:
-                    this.FireWeapon();
-                    return;
-
-                case Keys.O:
-                    this.p_OsdLevel = (this.p_OsdLevel + 1) % 2;
-                    return;
-            }
-        }
-
-        private void FireWeapon()
-        {
-            if (this.p_FocusedPhysicObject != null)
-            {
-                lock (this.p_World.PhysicObjects)
-                {
-                    PhysicObject bullet = new PhysicObject(String.Empty,
-                        this.p_FocusedPhysicObject.Position,
-                        this.p_FocusedPhysicObject.Speed + 50,
-                        this.p_FocusedPhysicObject.Shape.Orientation,
-                        2);
-                    bullet.Shape = new CircleShape(System.Drawing.Pens.Chocolate, 0.001);
-                    bullet.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(4);
-                    lock (this.p_World.PhysicObjects)
-                    {
-                        this.p_World.PhysicObjects.Add(bullet);
-                    }
-                }
-            }
-        }
-
-        private void FireEngine()
-        {
-            if (this.p_FocusedPhysicObject != null)
-            {
-                lock (this.p_World.PhysicObjects)
-                {
-                    if (this.p_FocusedPhysicObject.Engines.Count > 0)
-                    {
-                        p_EngineThrustOn = true;
-                        Engine e = (Engine)this.p_FocusedPhysicObject.Engines[0];
-                        double strength = e.Force.Magnitude + e.MaxStrength;
-                        e.Force = this.p_FocusedPhysicObject.Shape.Orientation.UnitVector * strength;
-
-                        Vector particleCenter = this.p_FocusedPhysicObject.Position - this.p_FocusedPhysicObject.Shape.Orientation.UnitVector * 3 / 2;
-                        for (int i = 0; i < 6; i++)
-                        {
-                            PhysicObject particle = new PhysicObject(String.Empty,
-                                particleCenter + new Vector(0, 0.1 * (p_Randomizer.Next() % 10)).Rotate(((double)p_Randomizer.Next() % 180) / CosmicConstants.PI),
-                                this.p_FocusedPhysicObject.Speed * 0.7,
-                                this.p_FocusedPhysicObject.Direction,
-                                0.01);
-                            particle.Shape = new CircleShape(p_Randomizer.Next() % 2 == 0 ? System.Drawing.Pens.DarkGoldenrod : System.Drawing.Pens.DarkRed, 0.001);
-
-                            particle.LiveUntil = DateTime.Now 
-                                    + TimeSpan.FromMilliseconds(maxSecondsEngineFireParticlesLivetime * 1000 * 4 / 5 
-                                                                    + p_Randomizer.Next() % maxSecondsEngineFireParticlesLivetime * 1000 * 1 / 5);
-                            lock (this.p_World.PhysicObjects)
-                            {
-                                this.p_World.PhysicObjects.Add(particle);
-                            }
+                            Int32 i = _world.Objects.IndexOf(_focusedObject) + 1;
+                            i = i % _world.Objects.Count;
+                            _focusedObject = (MassObject)_world.Objects[i];
                         }
                     }
                 }
             }
         }
 
-        private void PhysicsView_Resize(object sender, System.EventArgs e)
+        if (_focusedObject != null)
         {
-        }
-
-        public void Shutdown()
-        {
-            this.EngineThread.Shutdown = true;
-        }
-
-        private void PhysicsView_KeyUp(object sender, System.Windows.Forms.KeyEventArgs ea)
-        {
-            if (p_EngineThrustOn)
+            if (Keyboard.IsKeyDown(Key.L))
             {
-                if (this.p_FocusedPhysicObject != null)
+                lock (_world.Objects)
                 {
-                    lock (this.p_World.PhysicObjects)
-                    {
-                        if (this.p_FocusedPhysicObject.Engines.Count > 0)
-                        {
-                            this.p_EngineThrustOn = false;
-                            Engine e = (Engine)this.p_FocusedPhysicObject.Engines[0];
-                            e.Force = Vector.NullVector;
-                        }
-                    }
+                    _focusedObject.Shape.Orientation = _focusedObject.Shape.Orientation.Rotate(NaturalConstants.PI / 20);
                 }
-                return;
             }
 
+            if (Keyboard.IsKeyDown(Key.J))
+            {
+                lock (_world.Objects)
+                {
+                    _focusedObject.Shape.Orientation =
+                        _focusedObject.Shape.Orientation.Rotate(-NaturalConstants.PI / 20);
+                }
+            }
+
+            if (Keyboard.IsKeyDown(Key.B))
+            {
+                lock (_world.Objects)
+                {
+                    _focusedObject.Speed /= 2;
+                }
+            }
+        }
+
+        if (Keyboard.IsKeyDown(Key.K)) { StartEngine(); } else { StopEngine(); }
+
+        if (Keyboard.IsKeyDown(Key.Space)) { FireWeapon(); }
+        if (Keyboard.IsKeyDown(Key.O)) { _osdLevel = (_osdLevel + 1) % 2; }
+    }
+
+    private void PhysicsView_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
+    {
+        if (e.Button == MouseButtons.Left)
+        {
+            _isFrozen = true;
+
+            try
+            {
+                var form = new MassObjectDetails
+                {
+                    MassObject = new MassObject
+                    {
+                        Position = new Vector(_viewPoint.X + e.X / _spatialScale, _viewPoint.Y + e.Y / _spatialScale)
+                    }
+                };
+
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    lock (_world.Objects)
+                    {
+                        _world.Objects.Add(form.MassObject);
+                    }
+                }
+            }
+            finally
+            {
+                _isFrozen = false;
+            }
+        }
+        else
+        {
+            _focusedObject = null;
+            _viewPoint = _viewPoint + new Vector(e.X, e.Y) / _spatialScale - new Vector(Size.Width / 2, Size.Height / 2) / _spatialScale;
         }
     }
+
+    private void FireWeapon()
+    {
+        if (_focusedObject != null)
+        {
+            lock (_world.Objects)
+            {
+                var bullet = new MassObject(String.Empty,
+                    _focusedObject.Position,
+                    _focusedObject.Speed + 50,
+                    _focusedObject.Shape.Orientation,
+                    2);
+                bullet.Shape = new CircleShape(System.Drawing.Pens.Chocolate, 0.001);
+                bullet.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(4);
+                lock (_world.Objects)
+                {
+                    _world.Objects.Add(bullet);
+                }
+            }
+        }
+    }
+
+    private void StartEngine()
+    {
+        if (_focusedObject != null)
+        {
+            lock (_world.Objects)
+            {
+                if (_focusedObject.Engines.Count > 0)
+                {
+                    var engine = (Engine)_focusedObject.Engines[0];
+                    double strength = engine.Force.Magnitude + engine.MaxStrength;
+                    engine.Force = _focusedObject.Shape.Orientation.UnitVector * strength;
+
+                    var particleCenter = _focusedObject.Position - _focusedObject.Shape.Orientation.UnitVector * 3 / 2;
+
+                    for (int i = 0; i < 6; i++)
+                    {
+                        var particle = new MassObject(String.Empty,
+                            particleCenter + new Vector(0, 0.1 * (_randomizer.Next() % 10)).Rotate(((double)_randomizer.Next() % 180) / NaturalConstants.PI),
+                            _focusedObject.Speed * 0.7,
+                            _focusedObject.Direction,
+                            0.01);
+                        particle.Shape = new CircleShape(_randomizer.Next() % 2 == 0 ? System.Drawing.Pens.DarkGoldenrod : System.Drawing.Pens.DarkRed, 0.001);
+
+                        particle.LiveUntil = DateTime.Now + TimeSpan.FromMilliseconds(maxSecondsEngineFireParticlesLivetime * 1000 * 4 / 5
+                                                          + _randomizer.Next() % maxSecondsEngineFireParticlesLivetime * 1000 * 1 / 5);
+                        lock (_world.Objects)
+                        {
+                            _world.Objects.Add(particle);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void StopEngine()
+    {
+        if (_focusedObject != null)
+        {
+            lock (_world.Objects)
+            {
+                if (_focusedObject.Engines.Count > 0)
+                {
+                    var engine = (Engine)_focusedObject.Engines[0];
+                    engine.Force = Vector.NullVector;
+                }
+            }
+        }
+    }
+
+    public void Shutdown()
+    {
+        _engineThread.Shutdown = true;
+    }
+
 }

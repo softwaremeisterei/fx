@@ -25,7 +25,8 @@
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <OldToolsVersion>3.5</OldToolsVersion>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug\</OutputPath>
@@ -46,6 +47,7 @@
     <WarningLevel>4</WarningLevel>
     <DebugType>full</DebugType>
     <ErrorReport>prompt</ErrorReport>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
@@ -66,8 +68,10 @@
     <WarningLevel>4</WarningLevel>
     <DebugType>none</DebugType>
     <ErrorReport>prompt</ErrorReport>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PresentationCore" />
     <Reference Include="System">
       <Name>System</Name>
     </Reference>
@@ -83,13 +87,14 @@
     <Reference Include="System.Xml">
       <Name>System.XML</Name>
     </Reference>
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="App.ico" />
     <Compile Include="AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="CosmicConstants.cs">
+    <Compile Include="NaturalConstants.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Engine.cs">
@@ -101,12 +106,13 @@
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="PhysicObject.cs">
+    <Compile Include="MassObject.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="PhysicObjectForm.cs">
+    <Compile Include="MassObjectDetails.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="CoarseTrigonometry.cs" />
     <Compile Include="Physics.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -134,12 +140,15 @@
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="PhysicObjectForm.resx">
-      <DependentUpon>PhysicObjectForm.cs</DependentUpon>
+    <EmbeddedResource Include="MassObjectDetails.resx">
+      <DependentUpon>MassObjectDetails.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="PhysicsView.resx">
       <DependentUpon>PhysicsView.cs</DependentUpon>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

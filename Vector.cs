@@ -1,92 +1,101 @@
 using System;
+using fx;
 
-namespace fx
+/// <summary>
+/// Summary description for Vector.
+/// </summary>
+public class Vector
 {
-	/// <summary>
-	/// Summary description for Vector.
-	/// </summary>
-	public class Vector
-	{
-		public double X;
-		public double Y;
-		
-		public Vector(double X, double Y)
-		{
-			this.X = X;
-			this.Y = Y;
-		}
+    static CoarseTrigonometry _math = new CoarseTrigonometry();
 
-		public Vector Copy() 
-		{
-			return new Vector(this.X, this.Y);
-		}
+    public double X;
+    public double Y;
 
-		public static Vector operator+(Vector a, Vector b) {
-			return new Vector(a.X + b.X, a.Y + b.Y);
-		}
+    public Vector(double x, double y)
+    {
+        X = x;
+        Y = y;
+    }
 
-		public static Vector operator-(Vector a, Vector b) {
-			return new Vector(a.X - b.X, a.Y - b.Y);
-		}
+    public Vector Copy()
+    {
+        return new Vector(X, Y);
+    }
 
-		public static Vector operator*(Vector v, double a) {
-			return new Vector(v.X * a, v.Y * a);
-		}
+    public static Vector operator +(Vector a, Vector b)
+    {
+        return new Vector(a.X + b.X, a.Y + b.Y);
+    }
 
-		public static Vector operator/(Vector v, double a) {
-			return new Vector(v.X / a, v.Y / a);
-		}
+    public static Vector operator -(Vector a, Vector b)
+    {
+        return new Vector(a.X - b.X, a.Y - b.Y);
+    }
 
-		public static Vector NullVector
-		{
-			get { return new Vector(0,0); }
-		}
-		
-		public static Vector UnitVectorX 
-		{
-			get { return new Vector(1,0); }
-		}
+    public static Vector operator *(Vector v, double a)
+    {
+        return new Vector(v.X * a, v.Y * a);
+    }
 
-		public double Magnitude {
-			get {
-				return Math.Sqrt(this.X * this.X + this.Y*this.Y);
-			}
-		}
+    public static Vector operator /(Vector v, double a)
+    {
+        return new Vector(v.X / a, v.Y / a);
+    }
 
-		public Vector UnitVector {
-			get {
-				if (this.Magnitude == 0) return this;
-				return this / this.Magnitude;
-			}
-		}
+    public static Vector NullVector
+    {
+        get { return new Vector(0, 0); }
+    }
 
-		public double Angle 
-		{
-			get 
-			{ 
-				if (this.Magnitude == 0) return 0;
-				if (this.X > 0) 
-					if (Y > 0)
-						return Math.Atan(this.Y/this.X);
-					else
-						return CosmicConstants.PI * 2 + Math.Atan(this.Y/this.X);
-				else 
-					if (Y > 0)
-						return CosmicConstants.PI / 2 - Math.Atan(this.X/this.Y);
-					else
-						return CosmicConstants.PI * 3 / 2 - Math.Atan(this.X/this.Y);
-			}
-		}
+    public static Vector UnitVectorX
+    {
+        get { return new Vector(1, 0); }
+    }
 
-		public Vector Rotate(double angle) 
-		{
-			double sin = Math.Sin(angle);
-			double cos = Math.Cos(angle);
-			double x1 = this.X * cos - this.Y * sin;
-			double y1 = this.Y * cos + this.X * sin;
-			this.X = x1;
-			this.Y = y1;
-			return this;
-		}
-	}
+    public double Magnitude
+    {
+        get
+        {
+            return Math.Sqrt(X * X + Y * Y);
+        }
+    }
+
+    public Vector UnitVector
+    {
+        get
+        {
+            if (Magnitude == 0) return this;
+            return this / Magnitude;
+        }
+    }
+
+    public double Angle
+    {
+        get
+        {
+            if (Magnitude == 0) return 0;
+            if (X > 0)
+                if (Y > 0)
+                    return _math.Atan(Y, X);
+                else
+                    return NaturalConstants.PI * 2 + _math.Atan(Y, X);
+            else
+                if (Y > 0)
+                return NaturalConstants.PI / 2 - _math.Atan(X, Y);
+            else
+                return NaturalConstants.PI * 3 / 2 - _math.Atan(X, Y);
+        }
+    }
+
+    public Vector Rotate(double angle)
+    {
+        int deg = (int) (angle * 180 / Math.PI);
+        double sin = _math.Sin(deg);
+        double cos = _math.Cos(deg);
+        double x1 = X * cos - Y * sin;
+        double y1 = Y * cos + X * sin;
+        X = x1;
+        Y = y1;
+        return this;
+    }
 }

@@ -1,34 +1,27 @@
 using System;
 using System.Collections;
 
-namespace fx
+/// <summary>
+/// Summary description for Engine.
+/// </summary>
+public class Engine
 {
-	/// <summary>
-	/// Summary description for Engine.
-	/// </summary>
-	public class Engine
-	{
-		public DateTime LastUpdate = DateTime.Now;
+    public DateTime LastUpdate { get; set; } = DateTime.Now;
+    public Vector Force { get; set; } = Vector.NullVector;
+    public double MaxStrength { get; set; } = 1;
+    public double VariationPerSecond { get; set; } = 1;
 
-		public Vector Force = Vector.NullVector;
+    public Engine()
+    { }
 
-		public double MaxStrength = 1;
+    public Engine(Vector initialForce, double variationPerSecond)
+    {
+        Force = initialForce;
+        VariationPerSecond = variationPerSecond;
+    }
 
-		public double VariationPerSecond = 1;
-
-		public Engine()
-		{
-		}
-
-		public Engine(Vector initialForce, double variationPerSecond)
-		{
-			this.Force = initialForce;
-			this.VariationPerSecond = variationPerSecond;
-		}
-
-		public void OnTimeElapsed(double dtms) 
-		{
-			this.Force *= VariationPerSecond * dtms / 1000;
-		}
-	}
+    public void OnTimeElapsed(double dtms)
+    {
+        Force *= VariationPerSecond * dtms / 1000;
+    }
 }
