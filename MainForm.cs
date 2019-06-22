@@ -68,7 +68,9 @@ public class MainForm : Form
     [STAThread]
     static void Main()
     {
-        Application.Run(new MainForm());
+        var form = new MainForm();
+        form.StartPosition = FormStartPosition.CenterScreen;
+        Application.Run(form);
     }
 
     private void Form1_Load(object sender, System.EventArgs e)

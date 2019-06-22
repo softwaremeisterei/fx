@@ -15,7 +15,7 @@ public class PhysicsView : UserControl
 {
     World _world = new World();
     MassObject _focusedObject = null;
-    Radar _radar = new Radar { Position = new Vector(25, 100), Radius = 20, RealRadius = 150 };
+    Radar _radar;
     Scala _scala;
 
     EngineThread _engineThread = new EngineThread();
@@ -32,7 +32,7 @@ public class PhysicsView : UserControl
 
     const double _timerInterval = 40;
     const int maxSecondsEngineFireParticlesLivetime = 10;
-    const int CountObjectsCalcThreshold = 400;
+    const int CountObjectsCalcThreshold = 300;
 
     private System.ComponentModel.Container components = null;
     private Random _randomizer = new Random();
@@ -42,6 +42,7 @@ public class PhysicsView : UserControl
         InitializeComponent();
 
         _font = new Font("Arial", 10, GraphicsUnit.Pixel);
+        _radar = new Radar { Position = new Vector(25, 100), Radius = 20, RealRadius = 100 };
         _scala = new Scala { Size = new System.Drawing.Size(500, 500), Font = _font };
     }
 
@@ -64,33 +65,33 @@ public class PhysicsView : UserControl
     /// </summary>
     private void InitializeComponent()
     {
-            this.timer1 = new System.Timers.Timer();
-            ((System.ComponentModel.ISupportInitialize)(this.timer1)).BeginInit();
-            this.SuspendLayout();
-            // 
-            // timer1
-            // 
-            this.timer1.Enabled = true;
-            this.timer1.SynchronizingObject = this;
-            // 
-            // PhysicsView
-            // 
-            this.Name = "PhysicsView";
-            this.Size = new System.Drawing.Size(120, 112);
-            this.Load += new System.EventHandler(this.PhysicsView_Load);
-            this.Paint += new System.Windows.Forms.PaintEventHandler(this.PhysicsView_Paint);
-            this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PhysicsView_MouseDown);
-            this.Resize += new System.EventHandler(this.PhysicsView_Resize);
-            ((System.ComponentModel.ISupportInitialize)(this.timer1)).EndInit();
-            this.ResumeLayout(false);
+        this.timer1 = new System.Timers.Timer();
+        ((System.ComponentModel.ISupportInitialize)(this.timer1)).BeginInit();
+        this.SuspendLayout();
+        // 
+        // timer1
+        // 
+        this.timer1.Enabled = true;
+        this.timer1.SynchronizingObject = this;
+        // 
+        // PhysicsView
+        // 
+        this.Name = "PhysicsView";
+        this.Size = new System.Drawing.Size(120, 112);
+        this.Load += new System.EventHandler(this.PhysicsView_Load);
+        this.Paint += new System.Windows.Forms.PaintEventHandler(this.PhysicsView_Paint);
+        this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PhysicsView_MouseDown);
+        this.Resize += new System.EventHandler(this.PhysicsView_Resize);
+        ((System.ComponentModel.ISupportInitialize)(this.timer1)).EndInit();
+        this.ResumeLayout(false);
 
     }
     #endregion
 
     private void PaintOnscreenText(Graphics g)
     {
-        g.DrawString(GetOsdText(), _font, System.Drawing.Brushes.Black, 10, 10);
-        g.DrawString(GetCommandHelpText(), _font, System.Drawing.Brushes.Black, Size.Width - 150, 10);
+        g.DrawString(GetOsdText(), _font, Brushes.Black, 10, 10);
+        g.DrawString(GetCommandHelpText(), _font, Brushes.Black, Size.Width - 150, 10);
         _scala.Paint(g);
     }
 
@@ -116,7 +117,7 @@ public class PhysicsView : UserControl
                 {
                     if (obj.Name != String.Empty)
                     {
-                        g.DrawString(Describe(obj), _font, System.Drawing.Brushes.Black, (float)viewPosition.X - 10, (float)viewPosition.Y + 10);
+                        g.DrawString(Describe(obj), _font, Brushes.Black, (float)viewPosition.X - 10, (float)viewPosition.Y + 10);
                     }
                 }
             }
@@ -125,7 +126,7 @@ public class PhysicsView : UserControl
 
     private void PaintBackground(Graphics g)
     {
-        g.FillRectangle(System.Drawing.Brushes.LightBlue, g.ClipBounds);
+        g.FillRectangle(Brushes.LightBlue, g.ClipBounds);
     }
 
     private void PhysicsView_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
@@ -172,36 +173,15 @@ public class PhysicsView : UserControl
     {
         return "B Brake\r\nK Fire Engine\r\nJ Turn Left\r\nLTurn Right\r\nSpace Fire Wapon\r\n"
             + "O Toggle OSD\r\nN Focus Next\r\nR Reset\r\nF Freeze\r\n"
-            //+ "1 Realtime\r\nH 1h/s\r\nD 1d/s\r\nM 1Mth/s\r\nY 1a/s\r\n"
-            + "W Increase Time Scale\r\nQ Decrease Time Scale\r\n"
             + "S Increase Spatial Scale\r\nA Decrease Spatial Scale";
     }
 
     private string GetOsdText()
     {
-        var timeScale
-            = (_timeScale >= NaturalConstants.Year) ? string.Format("{0:F} years", _timeScale / NaturalConstants.Year)
-            : (_timeScale >= NaturalConstants.Month) ? string.Format("{0:F} months", _timeScale / NaturalConstants.Month)
-            : (_timeScale >= NaturalConstants.Day) ? string.Format("{0:F} days", _timeScale / NaturalConstants.Day)
-            : (_timeScale >= NaturalConstants.Hour) ? string.Format("{0:F} hours", _timeScale / NaturalConstants.Hour) : (_timeScale >= NaturalConstants.Minute)
-                ? string.Format("{0:F} minutes", _timeScale / NaturalConstants.Minute) : string.Format("{0:F} seconds", _timeScale);
-        var focusedOsd = string.Empty;
         var focused = _focusedObject;
-
-        if (focused != null)
-        {
-            var force = Vector.NullVector;
-
-            foreach (Engine e in focused.Engines)
-            {
-                force += e.Force;
-            }
-
-            focusedOsd = string.Format("Focused: {0}\r\nEngines Sum: {1:F} dx, {2:F} dy, {3:F} Nm\r\nGravitational force: {4:F} dx, {5:F} dy, {6:F} Nm", FocusedDescription(), force.X, force.Y, force.Magnitude, focused.GravForce.X, focused.GravForce.Y, focused.GravForce.Magnitude);
-
-        }
-
-        return string.Format("Spatial Scale {0:F} meter per pixel\r\nTime Scale {1} per second\r\nFrames/second {2:F}\r\n{3}", 1 / _spatialScale, timeScale, _framesPerSec, focusedOsd);
+        return
+            $"FPS {_framesPerSec:F}\r\n" +
+            $"Objects: {_world.Objects.Count}\r\n";
     }
 
     private string Describe(MassObject m)
@@ -262,43 +242,40 @@ public class PhysicsView : UserControl
         {
             HandleKeyboard();
 
-            if (_isFrozen)
+            if (_isFrozen == false)
             {
-                Invalidate(false);
-                return;
-            }
+                var physics = new Physics();
 
-            var physics = new Physics();
-
-            lock (_world.Objects)
-            {
-                MassObject[] physObjs = null;
-
-                if (_world.Objects.Count > CountObjectsCalcThreshold)
+                lock (_world.Objects)
                 {
-                    // Take only the biggest objects into the calculation
-                    // 1. Sort the objects descending by mass
-                    _world.Objects.Sort(new Comparison<MassObject>((a, b) => -a.Mass.CompareTo(b.Mass)));
+                    MassObject[] physObjs = null;
 
-                    physObjs = new MassObject[CountObjectsCalcThreshold];
-
-                    var count = 0;
-                    foreach (MassObject o in _world.Objects)
+                    if (_world.Objects.Count > CountObjectsCalcThreshold)
                     {
-                        physObjs[count++] = o;
-                        if (count == CountObjectsCalcThreshold) break;
+                        // Take only the biggest objects into the calculation
+                        // 1. Sort the objects descending by mass
+                        _world.Objects.Sort(new Comparison<MassObject>((a, b) => -a.Mass.CompareTo(b.Mass)));
+
+                        physObjs = new MassObject[CountObjectsCalcThreshold];
+
+                        var count = 0;
+                        foreach (MassObject o in _world.Objects)
+                        {
+                            physObjs[count++] = o;
+                            if (count == CountObjectsCalcThreshold) break;
+                        }
                     }
-                }
-                else
-                {
-                    physObjs = _world.Objects.ToArray();
+                    else
+                    {
+                        physObjs = _world.Objects.ToArray();
+                    }
+
+                    physics.Calculate(physObjs, _timerInterval * _timeScale);
                 }
 
-                physics.Calculate(physObjs, _timerInterval * _timeScale);
             }
 
             _world.CollectGarbage();
-
             Invalidate(false);
         }
     }
@@ -317,17 +294,6 @@ public class PhysicsView : UserControl
 
         if (Keyboard.IsKeyDown(Key.S)) { _spatialScale = Math.Min(1000, _spatialScale * 2); _scala.SpatialScale = _spatialScale; }
         if (Keyboard.IsKeyDown(Key.A)) { _spatialScale = Math.Max(0.001, _spatialScale / 2); _scala.SpatialScale = _spatialScale; }
-
-        if (Keyboard.IsKeyDown(Key.W)) { _timeScale *= 2; }
-        if (Keyboard.IsKeyDown(Key.Q)) { _timeScale /= 2; }
-
-        //if (Keyboard.IsKeyDown(Key.H)) { _timeScale = NaturalConstants.Hour; }
-        //if (Keyboard.IsKeyDown(Key.D)) { _timeScale = NaturalConstants.Day; }
-        //if (Keyboard.IsKeyDown(Key.M)) { _timeScale = NaturalConstants.Month; }
-        //if (Keyboard.IsKeyDown(Key.Y)) { _timeScale = NaturalConstants.Year; }
-
-        //if (Keyboard.IsKeyDown(Key.D1)) { _spatialScale = 1; _timeScale = 1; _scala.SpatialScale = _spatialScale;}
-
 
         if (Keyboard.IsKeyDown(Key.F)) { _isFrozen = !_isFrozen; }
         if (Keyboard.IsKeyDown(Key.R)) { lock (_world.Objects) { _world.Objects.Clear(); } }
@@ -403,10 +369,7 @@ public class PhysicsView : UserControl
             {
                 var form = new MassObjectDetails
                 {
-                    MassObject = new MassObject
-                    {
-                        Position = new Vector(_viewPoint.X + e.X / _spatialScale, _viewPoint.Y + e.Y / _spatialScale)
-                    }
+                    MassObject = new MassObject { Position = new Vector(_viewPoint.X + e.X / _spatialScale, _viewPoint.Y + e.Y / _spatialScale) }
                 };
 
                 if (form.ShowDialog() == DialogResult.OK)
@@ -442,7 +405,7 @@ public class PhysicsView : UserControl
                     _focusedObject.Speed + 50,
                     _focusedObject.Shape.Orientation,
                     WeaponMass);
-                bullet.Shape = new CircleShape(System.Drawing.Pens.Chocolate, 0.001);
+                bullet.Shape = new CircleShape(Pens.Chocolate, 0.001);
                 bullet.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(4);
                 lock (_world.Objects)
                 {
@@ -473,7 +436,7 @@ public class PhysicsView : UserControl
                             _focusedObject.Speed * 0.7,
                             _focusedObject.Direction,
                             0.01);
-                        particle.Shape = new CircleShape(_randomizer.Next() % 2 == 0 ? System.Drawing.Pens.DarkGoldenrod : System.Drawing.Pens.DarkRed, 0.001);
+                        particle.Shape = new CircleShape(_randomizer.Next() % 2 == 0 ? Pens.DarkGoldenrod : Pens.DarkRed, 0.001);
 
                         particle.LiveUntil = DateTime.Now + TimeSpan.FromMilliseconds(maxSecondsEngineFireParticlesLivetime * 1000 * 4 / 5
                                                           + _randomizer.Next() % maxSecondsEngineFireParticlesLivetime * 1000 * 1 / 5);
