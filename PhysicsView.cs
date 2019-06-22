@@ -1,8 +1,11 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Threading;
+using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
+using System.Windows.Media.TextFormatting;
 
 /// <summary>
 /// Summary description for PhysicsView.
@@ -26,7 +29,7 @@ public class PhysicsView : UserControl
 
     const double _timerInterval = 40;
     const int maxSecondsEngineFireParticlesLivetime = 10;
-    const int CountObjectsCalcTreshold = 200;
+    const int CountObjectsCalcThreshold = 400;
 
     private System.ComponentModel.Container components = null;
 
@@ -102,6 +105,8 @@ public class PhysicsView : UserControl
     {
         lock (_world.Objects)
         {
+            DrawRadar(g);
+
             foreach (var obj in _world.Objects)
             {
                 var viewPosition = obj.Position - _viewPoint;
@@ -169,7 +174,7 @@ public class PhysicsView : UserControl
     {
         return "B Brake\r\nK Fire Engine\r\nJ Turn Left\r\nLTurn Right\r\nSpace Fire Wapon\r\n"
             + "O Toggle OSD\r\nN Focus Next\r\nR Reset\r\nF Freeze\r\n"
-            + "1 Realtime\r\nH 1h/s\r\nD 1d/s\r\nM 1Mth/s\r\nY 1a/s\r\n"
+            //+ "1 Realtime\r\nH 1h/s\r\nD 1d/s\r\nM 1Mth/s\r\nY 1a/s\r\n"
             + "W Increase Time Scale\r\nQ Decrease Time Scale\r\n"
             + "S Increase Spatial Scale\r\nA Decrease Spatial Scale";
     }
@@ -208,6 +213,8 @@ public class PhysicsView : UserControl
 
     private void PhysicsView_Load(object sender, System.EventArgs e)
     {
+        _spatialScale = 6;
+
         _engineThread.Run();
 #if false
 			_world.InsertSolarSystem();
@@ -222,18 +229,19 @@ public class PhysicsView : UserControl
         ninasMoon.Shape = new CircleShape(1);
         _world.Objects.Add(ninasMoon);
 
-        var starship = new MassObject("Starship Ed", Vector.NullVector + Vector.UnitVectorX * -40, 0, new Vector(1, 0), 1E+4);
-        _world.Objects.Add(starship);
+        var starship = new MassObject("Starship Ed", Vector.NullVector + Vector.UnitVectorX * -20, 0, new Vector(1, 0), 1E+4);
         starship.Shape = new StarshipShape();
         starship.Shape.Orientation = new Vector(1, -0.618);
+        starship.Direction = starship.Shape.Orientation;
+        starship.Speed = 4;
+        _world.Objects.Add(starship);
+
+        _focusedObject = starship;
 
         var engine = new Engine(Vector.NullVector, 0/*-0.9*/);
         engine.MaxStrength = 10E+4;
-        _engineThread.Add(engine);
         starship.Engines.Add(engine);
-
-        _spatialScale = 6;
-        _focusedObject = starship;
+        _engineThread.Add(engine);
 
 #endif
 
@@ -245,7 +253,7 @@ public class PhysicsView : UserControl
         SetStyle(ControlStyles.ResizeRedraw | ControlStyles.Opaque, true);
     }
 
-    private static Object Mux = new Object();
+    private static object Mux = new object();
 
     private void TimerTick(object sender, System.Timers.ElapsedEventArgs e)
     {
@@ -253,13 +261,13 @@ public class PhysicsView : UserControl
 
         lock (Mux)
         {
+            HandleKeyboard();
+
             if (_isFrozen)
             {
                 Invalidate(false);
                 return;
             }
-
-            HandleKeyboard();
 
             var physics = new Physics();
 
@@ -267,19 +275,19 @@ public class PhysicsView : UserControl
             {
                 MassObject[] physObjs = null;
 
-                if (_world.Objects.Count > CountObjectsCalcTreshold)
+                if (_world.Objects.Count > CountObjectsCalcThreshold)
                 {
                     // Take only the biggest objects into the calculation
                     // 1. Sort the objects descending by mass
                     _world.Objects.Sort(new Comparison<MassObject>((a, b) => -a.Mass.CompareTo(b.Mass)));
 
-                    physObjs = new MassObject[CountObjectsCalcTreshold];
+                    physObjs = new MassObject[CountObjectsCalcThreshold];
 
                     var count = 0;
                     foreach (MassObject o in _world.Objects)
                     {
                         physObjs[count++] = o;
-                        if (count == CountObjectsCalcTreshold) break;
+                        if (count == CountObjectsCalcThreshold) break;
                     }
                 }
                 else
@@ -308,18 +316,18 @@ public class PhysicsView : UserControl
             return;
         }
 
-        if (Keyboard.IsKeyDown(Key.S)) { _spatialScale *= 2; }
-        if (Keyboard.IsKeyDown(Key.A)) { _spatialScale /= 2; }
+        if (Keyboard.IsKeyDown(Key.S)) { _spatialScale = Math.Min(1000, _spatialScale * 2); }
+        if (Keyboard.IsKeyDown(Key.A)) { _spatialScale = Math.Max(0.0000001, _spatialScale / 2); }
 
         if (Keyboard.IsKeyDown(Key.W)) { _timeScale *= 2; }
         if (Keyboard.IsKeyDown(Key.Q)) { _timeScale /= 2; }
 
-        if (Keyboard.IsKeyDown(Key.H)) { _timeScale = NaturalConstants.Hour; }
-        if (Keyboard.IsKeyDown(Key.D)) { _timeScale = NaturalConstants.Day; }
-        if (Keyboard.IsKeyDown(Key.M)) { _timeScale = NaturalConstants.Month; }
-        if (Keyboard.IsKeyDown(Key.Y)) { _timeScale = NaturalConstants.Year; }
+        //if (Keyboard.IsKeyDown(Key.H)) { _timeScale = NaturalConstants.Hour; }
+        //if (Keyboard.IsKeyDown(Key.D)) { _timeScale = NaturalConstants.Day; }
+        //if (Keyboard.IsKeyDown(Key.M)) { _timeScale = NaturalConstants.Month; }
+        //if (Keyboard.IsKeyDown(Key.Y)) { _timeScale = NaturalConstants.Year; }
 
-        if (Keyboard.IsKeyDown(Key.D1)) { _spatialScale = 1; _timeScale = 1; }
+        //if (Keyboard.IsKeyDown(Key.D1)) { _spatialScale = 1; _timeScale = 1; }
 
 
         if (Keyboard.IsKeyDown(Key.F)) { _isFrozen = !_isFrozen; }
@@ -337,15 +345,15 @@ public class PhysicsView : UserControl
                 {
                     if (_focusedObject == null)
                     {
-                        _focusedObject = (MassObject)_world.Objects[0];
+                        _focusedObject = _world.Objects[0];
                     }
                     else
                     {
                         lock (_world.Objects)
                         {
-                            Int32 i = _world.Objects.IndexOf(_focusedObject) + 1;
+                            var i = _world.Objects.IndexOf(_focusedObject) + 1;
                             i = i % _world.Objects.Count;
-                            _focusedObject = (MassObject)_world.Objects[i];
+                            _focusedObject = _world.Objects[i];
                         }
                     }
                 }
@@ -422,6 +430,8 @@ public class PhysicsView : UserControl
         }
     }
 
+    private double WeaponMass = 2;
+
     private void FireWeapon()
     {
         if (_focusedObject != null)
@@ -432,7 +442,7 @@ public class PhysicsView : UserControl
                     _focusedObject.Position,
                     _focusedObject.Speed + 50,
                     _focusedObject.Shape.Orientation,
-                    2);
+                    WeaponMass);
                 bullet.Shape = new CircleShape(System.Drawing.Pens.Chocolate, 0.001);
                 bullet.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(4);
                 lock (_world.Objects)
@@ -451,8 +461,8 @@ public class PhysicsView : UserControl
             {
                 if (_focusedObject.Engines.Count > 0)
                 {
-                    var engine = (Engine)_focusedObject.Engines[0];
-                    double strength = engine.Force.Magnitude + engine.MaxStrength;
+                    var engine = _focusedObject.Engines[0];
+                    var strength = engine.Force.Magnitude + engine.MaxStrength;
                     engine.Force = _focusedObject.Shape.Orientation.UnitVector * strength;
 
                     var particleCenter = _focusedObject.Position - _focusedObject.Shape.Orientation.UnitVector * 3 / 2;
@@ -496,6 +506,51 @@ public class PhysicsView : UserControl
     public void Shutdown()
     {
         _engineThread.Shutdown = true;
+    }
+
+    static Pen focusedPen = new Pen(Color.Yellow);
+    static Pen othersPen = new Pen(Color.Red);
+    static Pen radarBorderPen = new Pen(Color.FromArgb(170,170,255));
+
+    public void DrawRadar(Graphics g)
+    {
+        const int RadarRadius = 20;
+        const double RadarRadiusReal = 150;
+
+        var center = new Vector(RadarRadius, 100);
+
+        var focusedObj = _focusedObject;
+
+        if (focusedObj != null)
+        {
+            lock (_world.Objects)
+            {
+                // reduce to most massive objects
+                var objects = _world.Objects.Where(o => o.Name != null && o.Name.Length > 0 && o.Mass > WeaponMass).ToArray();
+
+                if (objects.Length > 0)
+                {
+                    g.DrawEllipse(radarBorderPen, (float)(center.X - RadarRadius),  (float)(center.Y - RadarRadius), RadarRadius * 2, RadarRadius * 2);
+
+                    foreach (var obj in objects)
+                    {
+                        var distVector = obj.Position - focusedObj.Position;
+                        var distance = distVector.Magnitude;
+                        var angle = distVector.Angle;
+
+                        distance = Math.Min(RadarRadius, distance * RadarRadius / RadarRadiusReal);
+                        distVector.SetMagnitude(distance);
+                        var location = (center + distVector);
+
+                        var pen = (obj == _focusedObject ? focusedPen : othersPen);
+
+                        g.DrawEllipse(pen,
+                                  (float)location.X, (float)location.Y,
+                                  2, 2);
+                    }
+                }
+            }
+        }
     }
 
 }

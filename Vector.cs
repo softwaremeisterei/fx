@@ -98,4 +98,12 @@ public class Vector
         Y = y1;
         return this;
     }
+
+    internal void SetMagnitude(double magnitude)
+    {
+        var angle = Angle;
+        int deg = (int)(angle * 180 / Math.PI);
+        X = _math.Cos(deg) * magnitude;
+        Y = _math.Sin(deg) * magnitude;
+    }
 }
