@@ -119,6 +119,8 @@
     <Compile Include="PhysicsView.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Radar.cs" />
+    <Compile Include="Scala.cs" />
     <Compile Include="Shape.cs">
       <SubType>Code</SubType>
     </Compile>

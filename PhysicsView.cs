@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media.TextFormatting;
+using fx;
 
 /// <summary>
 /// Summary description for PhysicsView.
@@ -14,7 +15,11 @@ public class PhysicsView : UserControl
 {
     World _world = new World();
     MassObject _focusedObject = null;
+    Radar _radar = new Radar { Position = new Vector(25, 100), Radius = 20, RealRadius = 150 };
+    Scala _scala;
+
     EngineThread _engineThread = new EngineThread();
+
     double _spatialScale = 1;
     double _timeScale = 1;
     Vector _viewPoint = new Vector(0, 0);
@@ -22,9 +27,7 @@ public class PhysicsView : UserControl
     int _osdLevel = 0;
     bool _isFrozen = false;
 
-    readonly Random _randomizer = new Random();
-    readonly Font _font = new Font("Arial", 10, GraphicsUnit.Pixel);
-
+    Font _font;
     private System.Timers.Timer timer1;
 
     const double _timerInterval = 40;
@@ -32,10 +35,14 @@ public class PhysicsView : UserControl
     const int CountObjectsCalcThreshold = 400;
 
     private System.ComponentModel.Container components = null;
+    private Random _randomizer = new Random();
 
     public PhysicsView()
     {
         InitializeComponent();
+
+        _font = new Font("Arial", 10, GraphicsUnit.Pixel);
+        _scala = new Scala { Size = new System.Drawing.Size(500, 500), Font = _font };
     }
 
     protected override void Dispose(bool disposing)
@@ -57,55 +64,46 @@ public class PhysicsView : UserControl
     /// </summary>
     private void InitializeComponent()
     {
-        this.timer1 = new System.Timers.Timer();
-        ((System.ComponentModel.ISupportInitialize)(this.timer1)).BeginInit();
-        this.SuspendLayout();
-        // 
-        // timer1
-        // 
-        this.timer1.Enabled = true;
-        this.timer1.SynchronizingObject = this;
-        // 
-        // PhysicsView
-        // 
-        this.Name = "PhysicsView";
-        this.Size = new System.Drawing.Size(120, 112);
-        this.Load += new System.EventHandler(this.PhysicsView_Load);
-        this.Paint += new System.Windows.Forms.PaintEventHandler(this.PhysicsView_Paint);
-        this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PhysicsView_MouseDown);
-        ((System.ComponentModel.ISupportInitialize)(this.timer1)).EndInit();
-        this.ResumeLayout(false);
+            this.timer1 = new System.Timers.Timer();
+            ((System.ComponentModel.ISupportInitialize)(this.timer1)).BeginInit();
+            this.SuspendLayout();
+            // 
+            // timer1
+            // 
+            this.timer1.Enabled = true;
+            this.timer1.SynchronizingObject = this;
+            // 
+            // PhysicsView
+            // 
+            this.Name = "PhysicsView";
+            this.Size = new System.Drawing.Size(120, 112);
+            this.Load += new System.EventHandler(this.PhysicsView_Load);
+            this.Paint += new System.Windows.Forms.PaintEventHandler(this.PhysicsView_Paint);
+            this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PhysicsView_MouseDown);
+            this.Resize += new System.EventHandler(this.PhysicsView_Resize);
+            ((System.ComponentModel.ISupportInitialize)(this.timer1)).EndInit();
+            this.ResumeLayout(false);
 
     }
     #endregion
-
-    private void PaintScala(Graphics g)
-    {
-        int x0 = Size.Width / 12;
-        int y0 = Size.Height * 10 / 12;
-        int x1 = Size.Width * 11 / 12;
-        g.DrawLine(Pens.Gray, x0, y0, x1, y0);
-
-        for (int i = 0; i < 11; i++)
-        {
-            int x = (int)(x0 + i * Size.Width / 12);
-            g.DrawLine(Pens.Gray, x, y0 - 5, x, y0);
-            g.DrawString((i * Size.Width / 12 / _spatialScale).ToString("F"), _font, Brushes.Gray, x, y0 + 5);
-        }
-    }
 
     private void PaintOnscreenText(Graphics g)
     {
         g.DrawString(GetOsdText(), _font, System.Drawing.Brushes.Black, 10, 10);
         g.DrawString(GetCommandHelpText(), _font, System.Drawing.Brushes.Black, Size.Width - 150, 10);
-        PaintScala(g);
+        _scala.Paint(g);
     }
 
     private void PaintWorld(Graphics g)
     {
         lock (_world.Objects)
         {
-            DrawRadar(g);
+            if (_focusedObject != null)
+            {
+                _radar.Paint(g, _focusedObject.Position,
+                    _world.Objects.Where(o => o.Name != null && o.Name.Length > 0 && o.Mass > WeaponMass).ToArray()
+                        .Select(o => o.Position).ToArray());
+            }
 
             foreach (var obj in _world.Objects)
             {
@@ -214,6 +212,7 @@ public class PhysicsView : UserControl
     private void PhysicsView_Load(object sender, System.EventArgs e)
     {
         _spatialScale = 6;
+        _scala.SpatialScale = _spatialScale;
 
         _engineThread.Run();
 #if false
@@ -316,8 +315,8 @@ public class PhysicsView : UserControl
             return;
         }
 
-        if (Keyboard.IsKeyDown(Key.S)) { _spatialScale = Math.Min(1000, _spatialScale * 2); }
-        if (Keyboard.IsKeyDown(Key.A)) { _spatialScale = Math.Max(0.0000001, _spatialScale / 2); }
+        if (Keyboard.IsKeyDown(Key.S)) { _spatialScale = Math.Min(1000, _spatialScale * 2); _scala.SpatialScale = _spatialScale; }
+        if (Keyboard.IsKeyDown(Key.A)) { _spatialScale = Math.Max(0.001, _spatialScale / 2); _scala.SpatialScale = _spatialScale; }
 
         if (Keyboard.IsKeyDown(Key.W)) { _timeScale *= 2; }
         if (Keyboard.IsKeyDown(Key.Q)) { _timeScale /= 2; }
@@ -327,7 +326,7 @@ public class PhysicsView : UserControl
         //if (Keyboard.IsKeyDown(Key.M)) { _timeScale = NaturalConstants.Month; }
         //if (Keyboard.IsKeyDown(Key.Y)) { _timeScale = NaturalConstants.Year; }
 
-        //if (Keyboard.IsKeyDown(Key.D1)) { _spatialScale = 1; _timeScale = 1; }
+        //if (Keyboard.IsKeyDown(Key.D1)) { _spatialScale = 1; _timeScale = 1; _scala.SpatialScale = _spatialScale;}
 
 
         if (Keyboard.IsKeyDown(Key.F)) { _isFrozen = !_isFrozen; }
@@ -508,49 +507,8 @@ public class PhysicsView : UserControl
         _engineThread.Shutdown = true;
     }
 
-    static Pen focusedPen = new Pen(Color.Yellow);
-    static Pen othersPen = new Pen(Color.Red);
-    static Pen radarBorderPen = new Pen(Color.FromArgb(170,170,255));
-
-    public void DrawRadar(Graphics g)
+    private void PhysicsView_Resize(object sender, EventArgs e)
     {
-        const int RadarRadius = 20;
-        const double RadarRadiusReal = 150;
-
-        var center = new Vector(RadarRadius, 100);
-
-        var focusedObj = _focusedObject;
-
-        if (focusedObj != null)
-        {
-            lock (_world.Objects)
-            {
-                // reduce to most massive objects
-                var objects = _world.Objects.Where(o => o.Name != null && o.Name.Length > 0 && o.Mass > WeaponMass).ToArray();
-
-                if (objects.Length > 0)
-                {
-                    g.DrawEllipse(radarBorderPen, (float)(center.X - RadarRadius),  (float)(center.Y - RadarRadius), RadarRadius * 2, RadarRadius * 2);
-
-                    foreach (var obj in objects)
-                    {
-                        var distVector = obj.Position - focusedObj.Position;
-                        var distance = distVector.Magnitude;
-                        var angle = distVector.Angle;
-
-                        distance = Math.Min(RadarRadius, distance * RadarRadius / RadarRadiusReal);
-                        distVector.SetMagnitude(distance);
-                        var location = (center + distVector);
-
-                        var pen = (obj == _focusedObject ? focusedPen : othersPen);
-
-                        g.DrawEllipse(pen,
-                                  (float)location.X, (float)location.Y,
-                                  2, 2);
-                    }
-                }
-            }
-        }
+        _scala.Size = this.Size;
     }
-
 }
