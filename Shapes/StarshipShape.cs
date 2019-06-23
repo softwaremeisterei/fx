@@ -7,9 +7,13 @@ public class StarshipShape : Shape
 {
     public double Height = 1.618;
     public double Width = 1;
+    double a;
+    private double b;
 
     public StarshipShape()
     {
+        a = Math.Atan(this.Width / 2 / this.Height);
+        b = Math.Sqrt(this.Width * this.Width / 4 + this.Height * this.Height);
     }
 
     public override void Paint(System.Drawing.Graphics g, double x, double y, double scale)
@@ -25,13 +29,13 @@ public class StarshipShape : Shape
         turtle.Save();
         turtle.Left(NaturalConstants.Degree90);
         turtle.Forward(this.Width / 2 * scale);
-        turtle.Right(Math.Atan(this.Width / 2 / this.Height) + NaturalConstants.Degree90);
-        turtle.Forward(Math.Sqrt(this.Width * this.Width / 4 + this.Height * this.Height) * scale);
+        turtle.Right(a + NaturalConstants.Degree90);
+        turtle.Forward(b * scale);
 
         turtle.Recall();
         turtle.Right(NaturalConstants.Degree90);
         turtle.Forward(this.Width / 2 * scale);
-        turtle.Left(Math.Atan(this.Width / 2 / this.Height) + NaturalConstants.Degree90);
-        turtle.Forward(Math.Sqrt(this.Width * this.Width / 4 + this.Height * this.Height) * scale);
+        turtle.Left(a + NaturalConstants.Degree90);
+        turtle.Forward(b * scale);
     }
 }

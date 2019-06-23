@@ -5,8 +5,6 @@ using System;
 /// </summary>
 public class CircleShape : Shape
 {
-    private System.Drawing.Font p_Font = new System.Drawing.Font("Arial", 10, System.Drawing.GraphicsUnit.Pixel);
-
     public double Radius { get; set; } = 1;
 
     public CircleShape()

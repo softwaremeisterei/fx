@@ -94,6 +94,10 @@
     <Compile Include="AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Bots\Bot.cs" />
+    <Compile Include="Bots\BotBehaviour.cs" />
+    <Compile Include="Bots\RotatingBehaviour.cs" />
+    <Compile Include="Bots\FiringBehaviour.cs" />
     <Compile Include="NaturalConstants.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -124,6 +128,7 @@
     <Compile Include="Shape.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Shapes\BotShape.cs" />
     <Compile Include="Shapes\CircleShape.cs">
       <SubType>Code</SubType>
     </Compile>

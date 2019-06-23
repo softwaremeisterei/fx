@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media.TextFormatting;
 using fx;
+using fx.Bots;
 
 /// <summary>
 /// Summary description for PhysicsView.
@@ -37,11 +38,13 @@ public class PhysicsView : UserControl
     private System.ComponentModel.Container components = null;
     private Random _randomizer = new Random();
 
+    private DateTime _startTime = DateTime.Now;
+
     public PhysicsView()
     {
         InitializeComponent();
 
-        _font = new Font("Arial", 10, GraphicsUnit.Pixel);
+        _font = new Font("Arial", 9, GraphicsUnit.Pixel);
         _radar = new Radar { Position = new Vector(25, 100), Radius = 20, RealRadius = 100 };
         _scala = new Scala { Size = new System.Drawing.Size(500, 500), Font = _font };
     }
@@ -91,7 +94,10 @@ public class PhysicsView : UserControl
     private void PaintOnscreenText(Graphics g)
     {
         g.DrawString(GetOsdText(), _font, Brushes.Black, 10, 10);
-        g.DrawString(GetCommandHelpText(), _font, Brushes.Black, Size.Width - 150, 10);
+        if (DateTime.Now - _startTime < TimeSpan.FromSeconds(5))
+        {
+            g.DrawString(GetCommandHelpText(), _font, Brushes.Black, Size.Width - 100, 10);
+        }
         _scala.Paint(g);
     }
 
@@ -171,22 +177,22 @@ public class PhysicsView : UserControl
 
     private string GetCommandHelpText()
     {
-        return "B Brake\r\nK Fire Engine\r\nJ Turn Left\r\nLTurn Right\r\nSpace Fire Wapon\r\n"
-            + "O Toggle OSD\r\nN Focus Next\r\nR Reset\r\nF Freeze\r\n"
-            + "S Increase Spatial Scale\r\nA Decrease Spatial Scale";
+        return "J Turn left\nL Turn right\nK Fire engine\nB Brake\nSpace Fire weapon\n"
+            + "O Toggle OSD\nN Focus next\nR Reset\nF Freeze\n"
+            + "S Zoom in\nA Zoom out";
     }
 
     private string GetOsdText()
     {
         var focused = _focusedObject;
         return
-            $"FPS {_framesPerSec:F}\r\n" +
-            $"Objects: {_world.Objects.Count}\r\n";
+            $"FPS {_framesPerSec:F}\n" +
+            $"Objects: {_world.Objects.Count}\n";
     }
 
     private string Describe(MassObject m)
     {
-        return string.Format("{0}\r\n{1:F} kg\r\n{2:F} m/s\r\nX: {3:F}\r\nY: {4:F}", m.Name, m.Mass, m.Speed, m.Position.X, m.Position.Y);
+        return string.Format("{0}\n{1:F} kg\n{2:F} m/s\nX: {3:F}nY: {4:F}", m.Name, m.Mass, m.Speed, m.Position.X, m.Position.Y);
     }
 
     private void PhysicsView_Load(object sender, System.EventArgs e)
@@ -272,7 +278,11 @@ public class PhysicsView : UserControl
 
                     physics.Calculate(physObjs, _timerInterval * _timeScale);
                 }
+            }
 
+            foreach (Bot bot in _world.Objects.Where(o => o is Bot).ToList())
+            {
+                bot.Calc(_timerInterval * _timeScale);
             }
 
             _world.CollectGarbage();
@@ -355,8 +365,27 @@ public class PhysicsView : UserControl
 
         if (Keyboard.IsKeyDown(Key.K)) { StartEngine(); } else { StopEngine(); }
 
-        if (Keyboard.IsKeyDown(Key.Space)) { FireWeapon(); }
+        if (Keyboard.IsKeyDown(Key.Space)) { FireWeapon(_focusedObject); }
         if (Keyboard.IsKeyDown(Key.O)) { _osdLevel = (_osdLevel + 1) % 2; }
+
+        if (Keyboard.IsKeyDown(Key.M)) { CreateBot(); }
+    }
+
+    private void CreateBot()
+    {
+        var focused = _focusedObject;
+        if (focused != null)
+        {
+            var bot = new Bot { Shape = new BotShape() };
+            bot.Mass = 2E+4;
+            bot.Shape.Orientation = new Vector(_randomizer.NextDouble(), _randomizer.NextDouble());
+            bot.Position = focused.Position + new Vector(_randomizer.Next(100) - 50, _randomizer.Next(100) - 50).UnitVector * (4 + _randomizer.Next(10));
+            bot.Speed = _randomizer.Next(15);
+            bot.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(10 + _randomizer.Next(50));
+            bot.Behaviours.Add(new FiringBehaviour(bot) { FireWeapon = FireWeapon });
+            bot.Behaviours.Add(new RotatingBehaviour(bot));
+            _world.Objects.Add(bot);
+        }
     }
 
     private void PhysicsView_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -394,16 +423,16 @@ public class PhysicsView : UserControl
 
     private double WeaponMass = 2;
 
-    private void FireWeapon()
+    private void FireWeapon(MassObject origin)
     {
-        if (_focusedObject != null)
+        if (origin != null)
         {
             lock (_world.Objects)
             {
                 var bullet = new MassObject(String.Empty,
-                    _focusedObject.Position,
-                    _focusedObject.Speed + 50,
-                    _focusedObject.Shape.Orientation,
+                    origin.Position,
+                    origin.Speed + 50,
+                    origin.Shape.Orientation,
                     WeaponMass);
                 bullet.Shape = new CircleShape(Pens.Chocolate, 0.001);
                 bullet.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(4);

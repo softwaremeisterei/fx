@@ -1,9 +1,18 @@
 using System;
+using System.Security.Cryptography.X509Certificates;
+
+public class Conversions
+{
+    public static double DegreeToRad(int degree)
+    {
+        return degree * NaturalConstants.PI / 180;
+    }
+}
 
 public class NaturalConstants
 {
 
-    public static readonly double PI = 3.14159265;
+    public static readonly double PI = Math.PI;
     public static readonly double Degree90 = PI / 2;
     public static readonly double Degree180 = PI;
     public static readonly double Degree360 = PI * 2;
