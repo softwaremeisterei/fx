@@ -67,7 +67,7 @@ public class World
         {
             // todo: move this into another thread which does more general world management tasks
             DateTime now = DateTime.Now;
-            for (int index = Objects.Count - 1; index > 0; index--)
+            for (int index = Objects.Count - 1; index >= 0; index--)
             {
                 var obj = Objects[index];
 

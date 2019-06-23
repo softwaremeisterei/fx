@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
@@ -29,9 +31,12 @@ public class PhysicsView : UserControl
     bool _isFrozen = false;
 
     Font _font;
-    private System.Timers.Timer timer1;
+    private System.Timers.Timer physicsTimer;
+    private System.Timers.Timer collisionsTimer;
 
-    const double _timerInterval = 40;
+    const double _physicsTimerInterval = 40;
+    const double _collisionsTimerInterval = 250;
+
     const int maxSecondsEngineFireParticlesLivetime = 10;
     const int CountObjectsCalcThreshold = 300;
 
@@ -39,6 +44,9 @@ public class PhysicsView : UserControl
     private Random _randomizer = new Random();
 
     private DateTime _startTime = DateTime.Now;
+
+    private double WeaponMass = 2;
+    private double DebrisMass = 6;
 
     public PhysicsView()
     {
@@ -68,14 +76,21 @@ public class PhysicsView : UserControl
     /// </summary>
     private void InitializeComponent()
     {
-        this.timer1 = new System.Timers.Timer();
-        ((System.ComponentModel.ISupportInitialize)(this.timer1)).BeginInit();
+        this.physicsTimer = new System.Timers.Timer();
+        ((System.ComponentModel.ISupportInitialize)(this.physicsTimer)).BeginInit();
+        this.collisionsTimer = new System.Timers.Timer();
+        ((System.ComponentModel.ISupportInitialize)(this.collisionsTimer)).BeginInit();
         this.SuspendLayout();
         // 
         // timer1
         // 
-        this.timer1.Enabled = true;
-        this.timer1.SynchronizingObject = this;
+        this.physicsTimer.Enabled = true;
+        this.physicsTimer.SynchronizingObject = this;
+        // 
+        // timer1
+        // 
+        this.collisionsTimer.Enabled = true;
+        this.collisionsTimer.SynchronizingObject = this;
         // 
         // PhysicsView
         // 
@@ -85,7 +100,8 @@ public class PhysicsView : UserControl
         this.Paint += new System.Windows.Forms.PaintEventHandler(this.PhysicsView_Paint);
         this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PhysicsView_MouseDown);
         this.Resize += new System.EventHandler(this.PhysicsView_Resize);
-        ((System.ComponentModel.ISupportInitialize)(this.timer1)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.physicsTimer)).EndInit();
+        ((System.ComponentModel.ISupportInitialize)(this.collisionsTimer)).EndInit();
         this.ResumeLayout(false);
 
     }
@@ -108,7 +124,7 @@ public class PhysicsView : UserControl
             if (_focusedObject != null)
             {
                 _radar.Paint(g, _focusedObject.Position,
-                    _world.Objects.Where(o => o.Name != null && o.Name.Length > 0 && o.Mass > WeaponMass).ToArray()
+                    _world.Objects.Where(o => o.Name != null && o.Name.Length > 0 && o.Mass > DebrisMass).ToArray()
                         .Select(o => o.Position).ToArray());
             }
 
@@ -230,17 +246,22 @@ public class PhysicsView : UserControl
 
 #endif
 
-        timer1.Interval = (int)_timerInterval;
-        timer1.Enabled = true;
-        timer1.Elapsed += new System.Timers.ElapsedEventHandler(TimerTick);
-        timer1.Start();
+        physicsTimer.Interval = (int)_physicsTimerInterval;
+        physicsTimer.Enabled = true;
+        physicsTimer.Elapsed += new System.Timers.ElapsedEventHandler(PhysicsTimerTick);
+        physicsTimer.Start();
+
+        collisionsTimer.Interval = (int)_collisionsTimerInterval;
+        collisionsTimer.Enabled = true;
+        collisionsTimer.Elapsed += new System.Timers.ElapsedEventHandler(CollisionsTimerTick);
+        collisionsTimer.Start();
 
         SetStyle(ControlStyles.ResizeRedraw | ControlStyles.Opaque, true);
     }
 
     private static object Mux = new object();
 
-    private void TimerTick(object sender, System.Timers.ElapsedEventArgs e)
+    private void PhysicsTimerTick(object sender, System.Timers.ElapsedEventArgs e)
     {
         if (!Monitor.TryEnter(Mux)) return;
 
@@ -276,17 +297,68 @@ public class PhysicsView : UserControl
                         physObjs = _world.Objects.ToArray();
                     }
 
-                    physics.Calculate(physObjs, _timerInterval * _timeScale);
+                    physics.Calculate(physObjs, _physicsTimerInterval * _timeScale);
                 }
             }
 
             foreach (Bot bot in _world.Objects.Where(o => o is Bot).ToList())
             {
-                bot.Calc(_timerInterval * _timeScale);
+                bot.Calc(_physicsTimerInterval * _timeScale);
             }
 
             _world.CollectGarbage();
             Invalidate(false);
+        }
+    }
+
+    private void CollisionsTimerTick(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        var dict = new Dictionary<int, List<MassObject>>();
+
+        lock (_world.Objects)
+        {
+            foreach (var o in _world.Objects.Where(o => o.Name != "Fuel"))
+            {
+                var pos = (int)o.Position.X * 10000 / 20  + (int)o.Position.Y * 100 / 20;
+                List<MassObject> list;
+                if (!dict.TryGetValue(pos, out list))
+                {
+                    list = new List<MassObject>();
+                    dict.Add(pos, list);
+                }
+                list.Add(o);
+            }
+
+            foreach (var collisions in dict.Values.Where(l => l.Count > 1))
+            {
+                foreach (var massObject in collisions)
+                {
+                    if (massObject.Name == "Weapon" || massObject.Name == "Debris") continue;
+
+                    Explode(massObject);
+
+                    _world.Objects.Remove(massObject);
+                }
+            }
+        }
+    }
+
+    private void Explode(MassObject massObject)
+    {
+        massObject.LiveUntil = DateTime.Now;
+
+        for (var i = 0; i < 20 + _randomizer.Next(20); i++)
+        {
+            var direction = massObject.Shape.Orientation.Rotate(_randomizer.NextDouble() % (2 * NaturalConstants.PI)).UnitVector;
+
+            var debris = new MassObject("Debris",
+                massObject.Position + direction * 3,
+                5 + massObject.Speed * (1 + _randomizer.NextDouble()),
+                direction,
+                DebrisMass);
+            debris.Shape = new CircleShape(Pens.IndianRed, 0.003);
+            debris.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(1 + _randomizer.Next(5));
+            _world.Objects.Add(debris);
         }
     }
 
@@ -379,7 +451,7 @@ public class PhysicsView : UserControl
             var bot = new Bot { Shape = new BotShape() };
             bot.Mass = 2E+4;
             bot.Shape.Orientation = new Vector(_randomizer.NextDouble(), _randomizer.NextDouble());
-            bot.Position = focused.Position + new Vector(_randomizer.Next(100) - 50, _randomizer.Next(100) - 50).UnitVector * (4 + _randomizer.Next(10));
+            bot.Position = focused.Position + new Vector(_randomizer.Next(100) - 50, _randomizer.Next(100) - 50).UnitVector * (20 + _randomizer.Next(10));
             bot.Speed = _randomizer.Next(15);
             bot.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(10 + _randomizer.Next(50));
             bot.Behaviours.Add(new FiringBehaviour(bot) { FireWeapon = FireWeapon });
@@ -421,25 +493,20 @@ public class PhysicsView : UserControl
         }
     }
 
-    private double WeaponMass = 2;
-
     private void FireWeapon(MassObject origin)
     {
         if (origin != null)
         {
             lock (_world.Objects)
             {
-                var bullet = new MassObject(String.Empty,
-                    origin.Position,
+                var bullet = new MassObject("Weapon",
+                    origin.Position + origin.Shape.Orientation.UnitVector * 2,
                     origin.Speed + 50,
                     origin.Shape.Orientation,
                     WeaponMass);
                 bullet.Shape = new CircleShape(Pens.Chocolate, 0.001);
                 bullet.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(4);
-                lock (_world.Objects)
-                {
-                    _world.Objects.Add(bullet);
-                }
+                _world.Objects.Add(bullet);
             }
         }
     }
@@ -460,7 +527,7 @@ public class PhysicsView : UserControl
 
                     for (int i = 0; i < 6; i++)
                     {
-                        var particle = new MassObject(String.Empty,
+                        var particle = new MassObject("Fuel",
                             particleCenter + new Vector(0, 0.1 * (_randomizer.Next() % 10)).Rotate(((double)_randomizer.Next() % 180) / NaturalConstants.PI),
                             _focusedObject.Speed * 0.7,
                             _focusedObject.Direction,
