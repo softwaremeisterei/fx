@@ -37,7 +37,7 @@ public class PhysicsView : UserControl
     const double _physicsTimerInterval = 40;
     const double _collisionsTimerInterval = 20;
 
-    const int maxSecondsEngineFireParticlesLivetime = 10;
+    const int maxSecondsEngineFireParticlesLivetime = 5;
     const int CountObjectsCalcThreshold = 300;
 
     private System.ComponentModel.Container components = null;
@@ -333,6 +333,8 @@ public class PhysicsView : UserControl
         }
     }
 
+    private Pen[] _debrisPens = new Pen[] { Pens.IndianRed, Pens.Yellow, Pens.LavenderBlush, Pens.Azure };
+
     private void Explode(MassObject massObject)
     {
         massObject.LiveUntil = DateTime.Now;
@@ -342,11 +344,11 @@ public class PhysicsView : UserControl
             var direction = massObject.Shape.Orientation.Rotate(_randomizer.NextDouble() % (2 * NaturalConstants.PI)).UnitVector;
 
             var debris = new MassObject("Debris",
-                massObject.Position + direction * 3,
-                5 + massObject.Speed * (1 + _randomizer.NextDouble()),
+                massObject.Position + direction * (2 + _randomizer.Next(4)),
+                5 + massObject.Speed * (1 + _randomizer.NextDouble() * 2),
                 direction,
                 DebrisMass);
-            debris.Shape = new CircleShape(Pens.IndianRed, 0.003);
+            debris.Shape = new CircleShape(_debrisPens[_randomizer.Next(_debrisPens.Length)], 0.003);
             debris.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(1 + _randomizer.Next(5));
             _world.Objects.Add(debris);
         }
@@ -508,6 +510,14 @@ public class PhysicsView : UserControl
         }
     }
 
+    Pen[] _fuelPens = new Pen[]
+    {
+        new Pen(Color.FromArgb(20, 255, 0, 0)),
+        new Pen(Color.FromArgb(40, 255, 0, 0)),
+        new Pen(Color.FromArgb(60, 255, 0, 0)),
+        new Pen(Color.FromArgb(80, 255, 0, 0)),
+    };
+
     private void StartEngine(MassObject obj)
     {
         if (obj != null)
@@ -529,7 +539,7 @@ public class PhysicsView : UserControl
                             obj.Speed * 0.7,
                             obj.Direction,
                             0.01);
-                        particle.Shape = new CircleShape(_randomizer.Next() % 2 == 0 ? Pens.DarkGoldenrod : Pens.DarkRed, 0.001);
+                        particle.Shape = new CircleShape(_fuelPens[_randomizer.Next(_fuelPens.Length)], 0.001);
 
                         particle.LiveUntil = DateTime.Now + TimeSpan.FromMilliseconds(maxSecondsEngineFireParticlesLivetime * 1000 * 2 / 5
                                                           + _randomizer.Next() % maxSecondsEngineFireParticlesLivetime * 1000 * 3 / 5);
