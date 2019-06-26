@@ -319,7 +319,7 @@ public class PhysicsView : UserControl
         {
             foreach (var o in _world.Objects.Where(o => o.Name != "Fuel"))
             {
-                var pos = (int)o.Position.X * 10000 / 30  + (int)o.Position.Y * 100 / 30;
+                var pos = (int)o.Position.X * 10000 / 30 + (int)o.Position.Y * 100 / 30;
                 List<MassObject> list;
                 if (!dict.TryGetValue(pos, out list))
                 {
@@ -437,7 +437,7 @@ public class PhysicsView : UserControl
             }
         }
 
-        if (Keyboard.IsKeyDown(Key.K)) { StartEngine(); } else { StopEngine(); }
+        if (Keyboard.IsKeyDown(Key.K)) { StartEngine(_focusedObject); } else { StopEngine(_focusedObject); }
 
         if (Keyboard.IsKeyDown(Key.Space)) { FireWeapon(_focusedObject); }
         if (Keyboard.IsKeyDown(Key.O)) { _osdLevel = (_osdLevel + 1) % 2; }
@@ -458,6 +458,13 @@ public class PhysicsView : UserControl
             bot.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(60 + _randomizer.Next(240));
             bot.Behaviours.Add(new FiringBehaviour(bot) { FireWeapon = FireWeapon });
             bot.Behaviours.Add(new RotatingBehaviour(bot));
+            bot.Behaviours.Add(new MovingBehaviour(bot) { StartEngine = StartEngine, StopEngine = StopEngine });
+
+            var engine = new Engine(Vector.NullVector, 0/*-0.9*/);
+            engine.MaxStrength = 10E+4;
+            bot.Engines.Add(engine);
+            _engineThread.Add(engine);
+
             _world.Objects.Add(bot);
         }
     }
@@ -513,31 +520,31 @@ public class PhysicsView : UserControl
         }
     }
 
-    private void StartEngine()
+    private void StartEngine(MassObject obj)
     {
-        if (_focusedObject != null)
+        if (obj != null)
         {
             lock (_world.Objects)
             {
-                if (_focusedObject.Engines.Count > 0)
+                if (obj.Engines.Count > 0)
                 {
-                    var engine = _focusedObject.Engines[0];
+                    var engine = obj.Engines[0];
                     var strength = engine.Force.Magnitude + engine.MaxStrength;
-                    engine.Force = _focusedObject.Shape.Orientation.UnitVector * strength;
+                    engine.Force = obj.Shape.Orientation.UnitVector * strength;
 
-                    var particleCenter = _focusedObject.Position - _focusedObject.Shape.Orientation.UnitVector * 3 / 2;
+                    var particleCenter = obj.Position - obj.Shape.Orientation.UnitVector * 3 / 2;
 
                     for (int i = 0; i < 6; i++)
                     {
                         var particle = new MassObject("Fuel",
                             particleCenter + new Vector(0, 0.1 * (_randomizer.Next() % 10)).Rotate(((double)_randomizer.Next() % 180) / NaturalConstants.PI),
-                            _focusedObject.Speed * 0.7,
-                            _focusedObject.Direction,
+                            obj.Speed * 0.7,
+                            obj.Direction,
                             0.01);
                         particle.Shape = new CircleShape(_randomizer.Next() % 2 == 0 ? Pens.DarkGoldenrod : Pens.DarkRed, 0.001);
 
-                        particle.LiveUntil = DateTime.Now + TimeSpan.FromMilliseconds(maxSecondsEngineFireParticlesLivetime * 1000 * 4 / 5
-                                                          + _randomizer.Next() % maxSecondsEngineFireParticlesLivetime * 1000 * 1 / 5);
+                        particle.LiveUntil = DateTime.Now + TimeSpan.FromMilliseconds(maxSecondsEngineFireParticlesLivetime * 1000 * 2 / 5
+                                                          + _randomizer.Next() % maxSecondsEngineFireParticlesLivetime * 1000 * 3 / 5);
                         lock (_world.Objects)
                         {
                             _world.Objects.Add(particle);
@@ -548,16 +555,18 @@ public class PhysicsView : UserControl
         }
     }
 
-    private void StopEngine()
+    private void StopEngine(MassObject obj)
     {
-        if (_focusedObject != null)
+        if (obj != null)
         {
             lock (_world.Objects)
             {
-                if (_focusedObject.Engines.Count > 0)
+                if (obj.Engines.Count > 0)
                 {
-                    var engine = (Engine)_focusedObject.Engines[0];
-                    engine.Force = Vector.NullVector;
+                    foreach (var engine in obj.Engines)
+                    {
+                        engine.Force = Vector.NullVector;
+                    }
                 }
             }
         }

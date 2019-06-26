@@ -96,6 +96,7 @@
     </Compile>
     <Compile Include="Bots\Bot.cs" />
     <Compile Include="Bots\BotBehaviour.cs" />
+    <Compile Include="Bots\MovingBehaviour.cs" />
     <Compile Include="Bots\RotatingBehaviour.cs" />
     <Compile Include="Bots\FiringBehaviour.cs" />
     <Compile Include="NaturalConstants.cs">
