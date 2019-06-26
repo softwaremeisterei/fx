@@ -35,7 +35,7 @@ public class PhysicsView : UserControl
     private System.Timers.Timer collisionsTimer;
 
     const double _physicsTimerInterval = 40;
-    const double _collisionsTimerInterval = 250;
+    const double _collisionsTimerInterval = 40;
 
     const int maxSecondsEngineFireParticlesLivetime = 10;
     const int CountObjectsCalcThreshold = 300;
@@ -319,7 +319,7 @@ public class PhysicsView : UserControl
         {
             foreach (var o in _world.Objects.Where(o => o.Name != "Fuel"))
             {
-                var pos = (int)o.Position.X * 10000 / 20  + (int)o.Position.Y * 100 / 20;
+                var pos = (int)o.Position.X * 10000 / 30  + (int)o.Position.Y * 100 / 30;
                 List<MassObject> list;
                 if (!dict.TryGetValue(pos, out list))
                 {
@@ -334,6 +334,8 @@ public class PhysicsView : UserControl
                 foreach (var massObject in collisions)
                 {
                     if (massObject.Name == "Weapon" || massObject.Name == "Debris") continue;
+
+                    if (massObject == _focusedObject) continue;
 
                     Explode(massObject);
 
@@ -448,12 +450,12 @@ public class PhysicsView : UserControl
         var focused = _focusedObject;
         if (focused != null)
         {
-            var bot = new Bot { Shape = new BotShape() };
+            var bot = new Bot { Name = "Bot", Shape = new BotShape() };
             bot.Mass = 2E+4;
             bot.Shape.Orientation = new Vector(_randomizer.NextDouble(), _randomizer.NextDouble());
             bot.Position = focused.Position + new Vector(_randomizer.Next(100) - 50, _randomizer.Next(100) - 50).UnitVector * (20 + _randomizer.Next(10));
             bot.Speed = _randomizer.Next(15);
-            bot.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(10 + _randomizer.Next(50));
+            bot.LiveUntil = DateTime.Now + TimeSpan.FromSeconds(60 + _randomizer.Next(240));
             bot.Behaviours.Add(new FiringBehaviour(bot) { FireWeapon = FireWeapon });
             bot.Behaviours.Add(new RotatingBehaviour(bot));
             _world.Objects.Add(bot);
