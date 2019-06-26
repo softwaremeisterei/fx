@@ -35,7 +35,7 @@ public class PhysicsView : UserControl
     private System.Timers.Timer collisionsTimer;
 
     const double _physicsTimerInterval = 40;
-    const double _collisionsTimerInterval = 40;
+    const double _collisionsTimerInterval = 20;
 
     const int maxSecondsEngineFireParticlesLivetime = 10;
     const int CountObjectsCalcThreshold = 300;
@@ -317,29 +317,17 @@ public class PhysicsView : UserControl
 
         lock (_world.Objects)
         {
-            foreach (var o in _world.Objects.Where(o => o.Name != "Fuel"))
+            var bots = _world.Objects.Where(o => o.Name == "Bot");
+            var weapons = _world.Objects.Where(o => o.Name == "Weapon");
+
+            for (var i = bots.Count() - 1; i >= 0; i--)
             {
-                var pos = (int)o.Position.X * 10000 / 30 + (int)o.Position.Y * 100 / 30;
-                List<MassObject> list;
-                if (!dict.TryGetValue(pos, out list))
+                var bot = bots.ElementAt(i);
+
+                if (weapons.Any(weapon => (bot.Position - weapon.Position).Magnitude < 1.5))
                 {
-                    list = new List<MassObject>();
-                    dict.Add(pos, list);
-                }
-                list.Add(o);
-            }
-
-            foreach (var collisions in dict.Values.Where(l => l.Count > 1))
-            {
-                foreach (var massObject in collisions)
-                {
-                    if (massObject.Name == "Weapon" || massObject.Name == "Debris") continue;
-
-                    if (massObject == _focusedObject) continue;
-
-                    Explode(massObject);
-
-                    _world.Objects.Remove(massObject);
+                    Explode(bot);
+                    _world.Objects.Remove(bot);
                 }
             }
         }
