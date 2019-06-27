@@ -301,15 +301,24 @@ public class PhysicsView : UserControl
                 }
             }
 
-            foreach (Bot bot in _world.Objects.Where(o => o is Bot).ToList())
+            var bots = _world.Objects.Where(o => o is Bot).ToList();
+            foreach (Bot bot in bots)
             {
                 bot.Calc(_physicsTimerInterval * _timeScale);
+            }
+
+            if (bots.Count < 10 && (DateTime.Now - _timeLastBotAdded).TotalSeconds > 5)
+            {
+                CreateBot();
+                _timeLastBotAdded = DateTime.Now;
             }
 
             _world.CollectGarbage();
             Invalidate(false);
         }
     }
+
+    private DateTime _timeLastBotAdded = DateTime.MinValue;
 
     private void CollisionsTimerTick(object sender, System.Timers.ElapsedEventArgs e)
     {
@@ -512,10 +521,10 @@ public class PhysicsView : UserControl
 
     Pen[] _fuelPens = new Pen[]
     {
-        new Pen(Color.FromArgb(20, 255, 0, 0)),
-        new Pen(Color.FromArgb(40, 255, 0, 0)),
-        new Pen(Color.FromArgb(60, 255, 0, 0)),
-        new Pen(Color.FromArgb(80, 255, 0, 0)),
+        new Pen(Color.FromArgb(60, 200, 200, 200)),
+        new Pen(Color.FromArgb(90, 150, 150, 255)),
+        new Pen(Color.FromArgb(120, 200, 200, 200)),
+        new Pen(Color.FromArgb(150, 150, 150, 255)),
     };
 
     private void StartEngine(MassObject obj)
@@ -539,7 +548,7 @@ public class PhysicsView : UserControl
                             obj.Speed * 0.7,
                             obj.Direction,
                             0.01);
-                        particle.Shape = new CircleShape(_fuelPens[_randomizer.Next(_fuelPens.Length)], 0.001);
+                        particle.Shape = new CircleShape(_fuelPens[_randomizer.Next(_fuelPens.Length)], 0.1);
 
                         particle.LiveUntil = DateTime.Now + TimeSpan.FromMilliseconds(maxSecondsEngineFireParticlesLivetime * 1000 * 2 / 5
                                                           + _randomizer.Next() % maxSecondsEngineFireParticlesLivetime * 1000 * 3 / 5);
