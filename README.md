@@ -1,4 +1,4 @@
-# fx - gravity sim written in C# / Windows Forms
+# FX - Gravity sim written in C# (Windows Forms)
 
 ```(c) 2008 Softwaremeisterei```
 
